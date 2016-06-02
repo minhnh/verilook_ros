@@ -9,7 +9,8 @@
 #include <std_msgs/String.h>
 
 /* Package */
-#include <verilook_ros.h>
+#include "verilook_ros.h"
+#include "verilook_ros/CreateTemplate.h"
 
 namespace verilook_ros
 {
@@ -22,6 +23,7 @@ public:
 
 private:
     void eventInCallback(const std_msgs::String::Ptr &msg);
+    bool handleCreateTemplateService(CreateTemplate::Request& request, CreateTemplate::Response& response);
 
     ros::Publisher pub_event_out_;
     ros::Subscriber sub_event_in_;

@@ -9,17 +9,21 @@ set(NODE_EXEC_FACE_DETECTION face_detection_verilook_node)
 find_package(catkin REQUIRED COMPONENTS
     roscpp
     nodelet
+    sensor_msgs
     std_msgs
     roslint
+    message_generation
     ${catkin_BUILD_PACKAGES}
 )
 
-catkin_package()
-
-## Additional header files
-include_directories(
-    ros/include
-    ${catkin_INCLUDE_DIRS}
+## Available service files in the 'srv' folder
+add_service_files(
+    FILES
+        CreateTemplate.srv
+)
+generate_messages(DEPENDENCIES
+    std_msgs 
+    sensor_msgs
 )
 
 catkin_package(
@@ -29,6 +33,13 @@ catkin_package(
         nodelet
         roscpp
         std_msgs
+        sensor_msgs
+)
+
+## Additional header files
+include_directories(
+    ros/include
+    ${catkin_INCLUDE_DIRS}
 )
 
 add_executable(${NODE_EXEC_FACE_DETECTION}

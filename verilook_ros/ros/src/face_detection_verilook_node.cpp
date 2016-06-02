@@ -22,17 +22,30 @@ FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 
     HNBiometricClient hBiometricClient = NULL;
 
+    // Obtain VeriLook license
+    obtainVerilookLicenses();
+
+    // Start camera service
+    ros::ServiceServer service = nh.advertiseService(
+            "create_face_template", &FaceDetectionVerilookNode::handleCreateTemplateService, this);
+
+    // event publisher and subscriber
     pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
     sub_event_in_ = nh.subscribe("event_in", 1, &FaceDetectionVerilookNode::eventInCallback, this);
 
-    // Obtain VeriLook license
-    obtainVerilookLicenses();
 }
 
 FaceDetectionVerilookNode::~FaceDetectionVerilookNode()
 {
-	releaseVerilookLicenses();
+    releaseVerilookLicenses();
     NCore::OnExit(false);
+}
+
+bool FaceDetectionVerilookNode::handleCreateTemplateService(
+        CreateTemplate::Request& request,
+        CreateTemplate::Response& response)
+{
+	return true;
 }
 
 void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
@@ -43,6 +56,7 @@ void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg
 }
 
 }   // namespace verilook_ros
+
 
 int main(int argc, char * argv[])
 {
