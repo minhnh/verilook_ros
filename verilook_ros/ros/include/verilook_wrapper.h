@@ -39,6 +39,8 @@ using Neurotec::NResult;
 using Neurotec::NFailed;
 using Neurotec::Images::HNImage;
 using Neurotec::Geometry::NRect;
+using Neurotec::NObjectSet;
+using Neurotec::HNObject;
 
 typedef void ( FaceDetectionVerilookNode::* GetImageType )(HNImage*);
 
@@ -46,6 +48,7 @@ NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType g
                                     FaceDetectionVerilookNode* obj, NRect *pBoundingRect);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
+NResult printErrorMsg(const std::string szErrorMessage, NResult result);
 NResult printErrorMsgWithLastError(const std::string szErrorMessage, NResult result);
 NResult retrieveErrorCodeRecursive(NResult result, Neurotec::HNError hError);
 

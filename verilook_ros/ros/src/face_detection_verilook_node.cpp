@@ -55,7 +55,7 @@ void FaceDetectionVerilookNode::imageMessageCallback(const sensor_msgs::Image::C
     else
     {
         // If buffer is not equal to NULL, free its memory
-        Neurotec::NObjectSet(NULL, (Neurotec::HNObject*) &image_buffer);
+        NObjectSet(NULL, (HNObject*) &image_buffer);
         // Place the new image for grabs by the getImage function
         image_buffer = newImage;
     }
@@ -91,7 +91,7 @@ bool FaceDetectionVerilookNode::createTemplateServiceCallback(
     ROS_INFO_STREAM(PACKAGE_NAME << "create template request: " << request.output_filename.c_str());
 
     // Free a possible leftover frame from last service call.
-    Neurotec::NObjectSet(NULL, (Neurotec::HNObject*) &image_buffer);
+    NObjectSet(NULL, (HNObject*) &image_buffer);
 
     // Subscribe to the image stream
     ros::NodeHandle nh;
