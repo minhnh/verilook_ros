@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     roslint
     message_generation
+    image_transport
     ${catkin_BUILD_PACKAGES}
 )
 
@@ -67,6 +68,7 @@ target_link_libraries(${NODE_EXEC_FACE_DETECTION}
     -lNBiometrics
     -lNLicensing
     -lNCore
+    -lNMedia
     ${catkin_LIBRARIES}
 )
 

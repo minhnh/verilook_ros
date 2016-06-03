@@ -12,6 +12,7 @@
 /* Neurotec */
 #include <NCore.hpp>
 #include <Core/NTypes.hpp>
+#include <Core/NDefs.h>
 #include <NLicensing.hpp>
 
 /* Definitions */
@@ -30,6 +31,8 @@ namespace verilook_ros
 
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
+Neurotec::NResult printErrorMsgWithLastError(const std::string szErrorMessage, Neurotec::NResult result);
+Neurotec::NResult retrieveErrorCodeRecursive(Neurotec::NResult result, Neurotec::HNError hError);
 
 }   // namespace verilook_ros
 

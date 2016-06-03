@@ -4,9 +4,16 @@
 #ifndef VERILOOK_ROS_FACE_DETECTION_VERILOOK_NODE_H
 #define VERILOOK_ROS_FACE_DETECTION_VERILOOK_NODE_H
 
+/* System */
+#include <boost/thread.hpp>
+
 /* ROS */
 #include <ros/ros.h>
 #include <std_msgs/String.h>
+#include <sensor_msgs/Image.h>
+
+/* Neurotec */
+#include <Images/NImage.hpp>
 
 /* Package */
 #include "verilook_ros.h"
@@ -23,10 +30,16 @@ public:
 
 private:
     void eventInCallback(const std_msgs::String::Ptr &msg);
-    bool handleCreateTemplateService(CreateTemplate::Request& request, CreateTemplate::Response& response);
+    bool condFulfilled();
+    void getImage(Neurotec::Images::HNImage *phImage);
+    void imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg);
+    bool createTemplateServiceCallback(CreateTemplate::Request& request, CreateTemplate::Response& response);
 
+    Neurotec::Images::HNImage image_buffer = NULL;
     ros::Publisher pub_event_out_;
     ros::Subscriber sub_event_in_;
+    boost::mutex mtx;
+    boost::condition_variable cond;
 };
 
 }   // namespace verilook_ros

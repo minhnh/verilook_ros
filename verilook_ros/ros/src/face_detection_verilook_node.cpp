@@ -1,9 +1,14 @@
 /* Copyright 2016 Bonn-Rhein-Sieg University
  * Author: Minh Nguyen
+ *
+ * Based on port from https://github.com/hansonrobotics/ros_verilook
  */
 
+/* ROS */
+#include "image_transport/image_transport.h"
+
 /* Neurotec */
-#include <NMedia.hpp>
+#include <Images/NImage.hpp>
 #include <NBiometrics.hpp>
 #include <NBiometricClient.hpp>
 
@@ -15,6 +20,7 @@ namespace verilook_ros
 {
 
 using Neurotec::NCore;
+using Neurotec::Images::HNImage;
 
 FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 {
@@ -27,7 +33,7 @@ FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 
     // Start camera service
     ros::ServiceServer service = nh.advertiseService(
-            "create_face_template", &FaceDetectionVerilookNode::handleCreateTemplateService, this);
+            "create_face_template", &FaceDetectionVerilookNode::createTemplateServiceCallback, this);
 
     // event publisher and subscriber
     pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
@@ -41,22 +47,80 @@ FaceDetectionVerilookNode::~FaceDetectionVerilookNode()
     NCore::OnExit(false);
 }
 
-bool FaceDetectionVerilookNode::handleCreateTemplateService(
+// Put incoming sensor_msgs/Image messages to a buffer
+void FaceDetectionVerilookNode::imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg)
+{
+    using Neurotec::Images::NImageCreateFromDataEx;
+    using Neurotec::Images::NPF_RGB_8U;
+
+    boost::lock_guard<boost::mutex> lock(mtx);
+
+    // Create the Image object
+    HNImage newImage = NULL;
+    Neurotec::NResult result = NImageCreateFromDataEx(NPF_RGB_8U.GetValue(), msg->width, msg->height,
+                                                      msg->step, msg->step, &msg->data[0],
+                                                      msg->height*msg->step, 0, &newImage);
+    if (Neurotec::NFailed(result))
+    {
+        result = printErrorMsgWithLastError("NImageCreateWrapperEx() failed, result = %d\n", result);
+    }
+    else
+    {
+        // If buffer is not equal to NULL, free its memory
+        Neurotec::NObjectSet(NULL, (Neurotec::HNObject*) &image_buffer);
+        // Place the new image for grabs by the getImage function
+        image_buffer = newImage;
+    }
+
+    cond.notify_one();
+}
+
+bool FaceDetectionVerilookNode::condFulfilled()
+{
+    return image_buffer != 0;
+}
+
+// Callback, from which EnrollFaceFromImageFunction gets its images.
+void FaceDetectionVerilookNode::getImage(HNImage *phImage)
+{
+    boost::unique_lock<boost::mutex> lock(mtx);
+    boost::system_time const timeout = boost::get_system_time() + boost::posix_time::seconds(1);
+    if (cond.timed_wait(lock, timeout, boost::bind(&FaceDetectionVerilookNode::condFulfilled, this)))
+    {
+        *phImage = image_buffer;
+        image_buffer = NULL;
+    }
+    else
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << "Timed out while waiting on ROS image stream.");
+    }
+}
+
+bool FaceDetectionVerilookNode::createTemplateServiceCallback(
         CreateTemplate::Request& request,
         CreateTemplate::Response& response)
 {
-	return true;
+    ROS_INFO_STREAM(PACKAGE_NAME << "create template request: " << request.output_filename.c_str());
+
+    // Free a possible leftover frame from last service call.
+    Neurotec::NObjectSet(NULL, (Neurotec::HNObject*) &image_buffer);
+
+    // Subscribe to the image stream
+    ros::NodeHandle nh;
+    image_transport::ImageTransport it(nh);
+    image_transport::Subscriber sub = it.subscribe("/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
+
+    return true;
 }
 
 void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
 {
-    ROS_INFO("verilook: in event_in callback...");
+    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
     if (msg->data == "e_trigger")
     {}
 }
 
 }   // namespace verilook_ros
-
 
 int main(int argc, char * argv[])
 {

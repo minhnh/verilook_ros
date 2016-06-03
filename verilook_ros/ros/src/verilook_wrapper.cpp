@@ -67,4 +67,38 @@ void releaseVerilookLicenses()
     }
 }
 
+Neurotec::NResult printErrorMsgWithLastError(const std::string szErrorMessage, Neurotec::NResult result)
+{
+    Neurotec::HNError hError = NULL;
+
+    ROS_ERROR_STREAM(szErrorMessage << result);
+
+    Neurotec::NErrorGetLastEx(0, &hError);
+    if (hError)
+    {
+        Neurotec::NErrorReportEx(result, hError);
+        result = retrieveErrorCodeRecursive(result, hError);
+        Neurotec::NObjectSet(NULL, (Neurotec::HNObject *) &hError);
+    }
+    else
+    {
+        Neurotec::NErrorReport(result);
+    }
+
+    return result;
+}
+
+Neurotec::NResult retrieveErrorCodeRecursive(Neurotec::NResult result, Neurotec::HNError hError)
+{
+    if (result == Neurotec::N_E_AGGREGATE && hError != NULL)
+    {
+        Neurotec::HNError hInnerError = NULL;
+        Neurotec::NErrorGetInnerErrorEx(hError, &hInnerError);
+        Neurotec::NErrorGetCodeEx(hInnerError, &result);
+        result = retrieveErrorCodeRecursive(result, hInnerError);
+        Neurotec::NObjectSet(NULL, (Neurotec::HNObject *) &hInnerError);
+    }
+    return result;
+}
+
 }   // namespace verilook_ros
