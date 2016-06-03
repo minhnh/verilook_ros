@@ -14,9 +14,6 @@
 namespace verilook_ros
 {
 
-using Neurotec::NCore;
-using Neurotec::Images::HNImage;
-
 FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 {
     // Obtain VeriLook license
@@ -48,10 +45,10 @@ void FaceDetectionVerilookNode::imageMessageCallback(const sensor_msgs::Image::C
 
     // Create the Image object
     HNImage newImage = NULL;
-    Neurotec::NResult result = NImageCreateFromDataEx(NPF_RGB_8U.GetValue(), msg->width, msg->height,
-                                                      msg->step, msg->step, &msg->data[0],
-                                                      msg->height*msg->step, 0, &newImage);
-    if (Neurotec::NFailed(result))
+    NResult result = NImageCreateFromDataEx(NPF_RGB_8U.GetValue(), msg->width, msg->height,
+                                            msg->step, msg->step, &msg->data[0],
+                                            msg->height*msg->step, 0, &newImage);
+    if (NFailed(result))
     {
         result = printErrorMsgWithLastError("NImageCreateWrapperEx() failed, result = %d\n", result);
     }
@@ -103,15 +100,13 @@ bool FaceDetectionVerilookNode::createTemplateServiceCallback(
             "/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
 
     // Invoke the main big "create template" or "enroll face" routine.
-    Neurotec::Geometry::NRect boundingRect;
-    Neurotec::NResult result = enrollFaceFromImageFunction(
-            request.output_filename,
-            &FaceDetectionVerilookNode::getImage,
-            this,
-            &boundingRect);
+    NRect boundingRect;
+    NResult result = enrollFaceFromImageFunction(request.output_filename,
+                                                 &FaceDetectionVerilookNode::getImage,
+                                                 this, &boundingRect);
 
     // Fill the service response
-    if (Neurotec::NFailed(result))
+    if (NFailed(result))
     {
         response.success = false;
     }

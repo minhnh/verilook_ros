@@ -36,21 +36,18 @@ namespace verilook_ros
 
 using Neurotec::NCore;
 using Neurotec::NResult;
-using Neurotec::Licensing::NLicense;
+using Neurotec::NFailed;
 using Neurotec::Images::HNImage;
 using Neurotec::Geometry::NRect;
 
 typedef void ( FaceDetectionVerilookNode::* GetImageType )(HNImage*);
 
-NResult enrollFaceFromImageFunction(
-        std::string templateFileName,
-        GetImageType getImage,
-        FaceDetectionVerilookNode* obj,
-        NRect *pBoundingRect);
+NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
+                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
-NResult printErrorMsgWithLastError(const std::string szErrorMessage, Neurotec::NResult result);
-NResult retrieveErrorCodeRecursive(Neurotec::NResult result, Neurotec::HNError hError);
+NResult printErrorMsgWithLastError(const std::string szErrorMessage, NResult result);
+NResult retrieveErrorCodeRecursive(NResult result, Neurotec::HNError hError);
 
 }   // namespace verilook_ros
 

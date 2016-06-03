@@ -21,13 +21,62 @@
 namespace verilook_ros
 {
 
-NResult enrollFaceFromImageFunction(
-        std::string templateFileName,
-        GetImageType getImage,
-        FaceDetectionVerilookNode* obj,
-        NRect *pBoundingRect)
+using Neurotec::Licensing::NLicense;
+
+NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
+                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect)
 {
+    using Neurotec::Biometrics::Client::NBiometricClientCreate;
     NResult result = Neurotec::N_OK;
+
+    Neurotec::Biometrics::HNSubject hSubject = NULL;
+    Neurotec::Biometrics::HNFace hFace = NULL;
+    Neurotec::Biometrics::Client::HNBiometricClient hBiometricClient = NULL;
+
+    // create subject
+    result = Neurotec::Biometrics::NSubjectCreate(&hSubject);
+    if (NFailed(result))
+    {
+        result = printErrorMsgWithLastError(
+                N_T(PACKAGE_NAME + ": NSubjectCreate() failed (result = %d)!"), result);
+        goto FINALLY;
+    }
+
+    // create face for the subject
+    result = Neurotec::Biometrics::NFaceCreate(&hFace);
+    if (NFailed(result))
+    {
+        result = printErrorMsgWithLastError(
+                N_T(PACKAGE_NAME + ": NFaceCreate() failed (result = %d)!"), result);
+        goto FINALLY;
+    }
+
+    // set that face will be captured from image stream
+    result = Neurotec::Biometrics::NBiometricSetHasMoreSamples(hFace, Neurotec::NTrue);
+    if (NFailed(result))
+    {
+        result = printErrorMsgWithLastError(
+                N_T(PACKAGE_NAME + ": NBiometricSetHasMoreSamples() failed (result = %d)!"), result);
+        goto FINALLY;
+    }
+
+    // set the face for the subject
+    result = NSubjectAddFace(hSubject, hFace, NULL);
+    if (NFailed(result))
+    {
+        result = printErrorMsgWithLastError(
+                N_T(PACKAGE_NAME + ": NSubjectAddFace() failed (result = %d)!"), result);
+        goto FINALLY;
+    }
+
+    // create biometric client
+    result = NBiometricClientCreate(&hBiometricClient);
+    if (NFailed(result))
+    {
+        result = printErrorMsgWithLastError(
+                N_T(PACKAGE_NAME + ": NBiometricClientCreate() failed (result = %d)!"), result);
+        goto FINALLY;
+    }
 
     return result;
 }
