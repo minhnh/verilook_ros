@@ -16,11 +16,12 @@
 #include <Images/NImage.hpp>
 
 /* Package */
-#include "verilook_ros.h"
 #include "verilook_ros/CreateTemplate.h"
 
 namespace verilook_ros
 {
+
+#define PACKAGE_NAME    "verilook_ros"
 
 class FaceDetectionVerilookNode
 {

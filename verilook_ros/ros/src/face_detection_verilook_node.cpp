@@ -7,11 +7,6 @@
 /* ROS */
 #include "image_transport/image_transport.h"
 
-/* Neurotec */
-#include <Images/NImage.hpp>
-#include <NBiometrics.hpp>
-#include <NBiometricClient.hpp>
-
 /* Package */
 #include <verilook_wrapper.h>
 #include <face_detection_verilook_node.h>
@@ -24,10 +19,6 @@ using Neurotec::Images::HNImage;
 
 FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 {
-    using Neurotec::Biometrics::Client::HNBiometricClient;
-
-    HNBiometricClient hBiometricClient = NULL;
-
     // Obtain VeriLook license
     obtainVerilookLicenses();
 
@@ -108,8 +99,33 @@ bool FaceDetectionVerilookNode::createTemplateServiceCallback(
     // Subscribe to the image stream
     ros::NodeHandle nh;
     image_transport::ImageTransport it(nh);
-    image_transport::Subscriber sub = it.subscribe("/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
+    image_transport::Subscriber sub = it.subscribe(
+            "/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
 
+    // Invoke the main big "create template" or "enroll face" routine.
+    Neurotec::Geometry::NRect boundingRect;
+    Neurotec::NResult result = enrollFaceFromImageFunction(
+            request.output_filename,
+            &FaceDetectionVerilookNode::getImage,
+            this,
+            &boundingRect);
+
+    // Fill the service response
+    if (Neurotec::NFailed(result))
+    {
+        response.success = false;
+    }
+    else
+    {
+        response.success = true;
+        response.face_position.x_offset = boundingRect.X;
+        response.face_position.y_offset = boundingRect.Y;
+        response.face_position.width = boundingRect.Width;
+        response.face_position.height = boundingRect.Height;
+    }
+
+    // Shutdown the image stream to save CPU usage
+    sub.shutdown();
     return true;
 }
 

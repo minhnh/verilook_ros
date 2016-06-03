@@ -14,6 +14,14 @@
 #include <Core/NTypes.hpp>
 #include <Core/NDefs.h>
 #include <NLicensing.hpp>
+#include <Images/NImage.hpp>
+#include <Geometry/NGeometry.hpp>
+
+/* Package */
+#include "face_detection_verilook_node.h"
+
+namespace verilook_ros
+{
 
 /* Definitions */
 #define LICENSE_COMPONENTS \
@@ -26,13 +34,23 @@
 #define LICENSE_SERVER  "/local"
 #define LICENSE_PORT    "5000"
 
-namespace verilook_ros
-{
+using Neurotec::NCore;
+using Neurotec::NResult;
+using Neurotec::Licensing::NLicense;
+using Neurotec::Images::HNImage;
+using Neurotec::Geometry::NRect;
 
+typedef void ( FaceDetectionVerilookNode::* GetImageType )(HNImage*);
+
+NResult enrollFaceFromImageFunction(
+        std::string templateFileName,
+        GetImageType getImage,
+        FaceDetectionVerilookNode* obj,
+        NRect *pBoundingRect);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
-Neurotec::NResult printErrorMsgWithLastError(const std::string szErrorMessage, Neurotec::NResult result);
-Neurotec::NResult retrieveErrorCodeRecursive(Neurotec::NResult result, Neurotec::HNError hError);
+NResult printErrorMsgWithLastError(const std::string szErrorMessage, Neurotec::NResult result);
+NResult retrieveErrorCodeRecursive(Neurotec::NResult result, Neurotec::HNError hError);
 
 }   // namespace verilook_ros
 
