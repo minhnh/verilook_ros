@@ -43,6 +43,7 @@ void FaceDetectionVerilookNode::imageMessageCallback(const sensor_msgs::Image::C
 
     boost::lock_guard<boost::mutex> lock(mtx);
 
+    ROS_INFO_STREAM(PACKAGE_NAME << ": image message callback");
     // Create the Image object
     HNImage newImage = NULL;
     NResult result = NImageCreateFromDataEx(NPF_RGB_8U.GetValue(), msg->width, msg->height,
@@ -127,8 +128,34 @@ bool FaceDetectionVerilookNode::createTemplateServiceCallback(
 void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
 {
     ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
-    if (msg->data == "e_trigger")
-    {}
+    if (msg->data == "e_start")
+    {
+        // Subscribe to the image stream
+        ros::NodeHandle nh;
+        image_transport::ImageTransport it(nh);
+        image_transport::Subscriber sub = it.subscribe(
+                "/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
+
+        // Invoke the main big "create template" or "enroll face" routine.
+        NRect boundingRect;
+        NResult result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
+                                                     &FaceDetectionVerilookNode::getImage,
+                                                     this, &boundingRect);
+
+        // Fill the service response
+        if (NFailed(result))
+        {
+            //response.success = false;
+            ROS_ERROR_STREAM(PACKAGE_NAME << ": enroll failed");
+        }
+        else
+        {
+            ROS_INFO_STREAM(PACKAGE_NAME << ": X = " << boundingRect.X << ", Y = " << boundingRect.Y);
+        }
+
+        // Shutdown the image stream to save CPU usage
+        sub.shutdown();
+    }
 }
 
 }   // namespace verilook_ros

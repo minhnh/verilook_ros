@@ -183,7 +183,7 @@ void obtainVerilookLicenses()
             }
             else
             {
-                ROS_DEBUG_STREAM(PACKAGE_NAME << ": License for " << Components[i] << " obtained successfully");
+                ROS_INFO_STREAM(PACKAGE_NAME << ": License for " << Components[i] << " obtained successfully");
             }
         }
     }
