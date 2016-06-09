@@ -11,10 +11,6 @@
 /* ROS */
 #include <ros/ros.h>
 
-/* Neurotec */
-#include <NBiometrics.hpp>
-#include <NBiometricClient.hpp>
-
 /* Package */
 #include <verilook_wrapper.h>
 
@@ -29,7 +25,7 @@ using Neurotec::NErrorReport;
 struct NeurotecObjects
 {
     NeurotecObjects() :
-        hSubject(NULL), hFace(NULL), hBiometricClient(NULL), hBuffer(NULL), hLAttributes(NULL),
+        hSubject(NULL), hFace(NULL), /*biometricClient(NULL),*/ hBuffer(NULL), hLAttributes(NULL),
         hEnumerator(NULL), hBiometricTask(NULL), hImage(NULL), hBiometricStatus(NULL)
     { }
 
@@ -41,8 +37,8 @@ struct NeurotecObjects
         result = NObjectSet(NULL, (HNObject*) &hFace);
         if (NFailed(result)) printErrorMsg("NeurotecObjects: clear hFace failed", result);
 
-        result = NObjectSet(NULL, (HNObject*) &hBiometricClient);
-        if (NFailed(result)) printErrorMsg("NeurotecObjects: clear hBiometricClient failed", result);
+//        result = NObjectSet(NULL, (HNObject*) &biometricClient);
+//        if (NFailed(result)) printErrorMsg("NeurotecObjects: clear hBiometricClient failed", result);
 
         result = NObjectSet(NULL, (HNObject*) &hBuffer);
         if (NFailed(result)) printErrorMsg("NeurotecObjects: clear hBuffer failed", result);
@@ -65,7 +61,6 @@ struct NeurotecObjects
 
     Neurotec::Biometrics::HNSubject hSubject;
     Neurotec::Biometrics::HNFace hFace;
-    Neurotec::Biometrics::Client::HNBiometricClient hBiometricClient;
     Neurotec::HNBuffer hBuffer;
     Neurotec::Biometrics::HNLAttributes hLAttributes;
     Neurotec::IO::HNFileEnumerator hEnumerator;
@@ -75,9 +70,9 @@ struct NeurotecObjects
 };
 
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
-                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect)
+                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect,
+                                    NBiometricClient & biometricClient)
 {
-    using Neurotec::Biometrics::Client::NBiometricClientCreate;
     NResult result = Neurotec::N_OK;
 
     NeurotecObjects neurotecObjects;
@@ -114,53 +109,19 @@ NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType g
         return result;
     }
 
-    // create biometric client
-    result = NBiometricClientCreate(&neurotecObjects.hBiometricClient);
-    if (NFailed(result))
-    {
-        result = printErrorMsgWithLastError(N_T("NBiometricClientCreate() failed (result = %d)!"), result);
-        return result;
-    }
-
-    NTemplateSize templateSize = Neurotec::Biometrics::ntsLarge;
-    Neurotec::NBoolean parameter = NTrue;
-    Neurotec::NBoolean hasEx = NFalse;
-
     // set template size to large
-    using Neurotec::Biometrics::NTemplateSizeTypeOf;
-    result = Neurotec::NObjectSetPropertyP(neurotecObjects.hBiometricClient, N_T("Faces.TemplateSize"),
-                                           N_TYPE_OF(NTemplateSize), Neurotec::naNone,
-                                           &templateSize, sizeof(templateSize), 1, NTrue);
-    if (NFailed(result))
-    {
-        result = printErrorMsgWithLastError(N_T("NObjectSetProperty() failed (result = %d)!"), result);
-        return result;
-    }
+    biometricClient.SetFacesTemplateSize(Neurotec::Biometrics::ntsLarge);
 
-    using Neurotec::Licensing::NLicenseIsComponentActivated;
-    using Neurotec::Licensing::NLicenseIsComponentActivatedA;
     //TODO: make this in the same scheme as other license components
-    const Neurotec::NChar * additionalComponents = N_T("Biometrics.FaceSegmentsDetection");
-    result = NLicenseIsComponentActivated(additionalComponents, &hasEx);
-    if (NFailed(result))
-    {
-        result = printErrorMsgWithLastError(N_T("NLicenseIsComponentActivated() failed (result = %d)!"), result);
-        return result;
-    }
+    Neurotec::NBoolean hasEx = NFalse;
+    hasEx = NLicense::IsComponentActivated("Biometrics.FaceSegmentsDetection");
 
     if (hasEx)
     {
         // set detect all facial features
-        using Neurotec::NBooleanTypeOf;
-        result = Neurotec::NObjectSetPropertyP(neurotecObjects.hBiometricClient,
-                                               N_T("Faces.DetectAllFeaturePoints"),
-                                               N_TYPE_OF(NBoolean), Neurotec::naNone,
-                                               &parameter, sizeof(parameter), 1, NTrue);
-        if (NFailed(result))
-        {
-            result = printErrorMsgWithLastError(N_T("NObjectSetProperty() failed (result = %d)!"), result);
-            return result;
-        }
+        biometricClient.SetFacesDetectAllFeaturePoints(NTrue);
+        biometricClient.SetFacesDetectBaseFeaturePoints(NTrue);
+        biometricClient.SetFacesDetermineGender(NTrue);
     }
 
     return result;

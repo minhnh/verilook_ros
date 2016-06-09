@@ -14,6 +14,7 @@
 
 /* Neurotec */
 #include <Images/NImage.hpp>
+#include <NBiometricClient.hpp>
 
 /* Package */
 #include "verilook_ros/CreateTemplate.h"
@@ -37,10 +38,14 @@ private:
     bool createTemplateServiceCallback(CreateTemplate::Request& request, CreateTemplate::Response& response);
 
     Neurotec::Images::HNImage image_buffer = NULL;
+    Neurotec::Biometrics::Client::NBiometricClient biometricClient;
+
     ros::Publisher pub_event_out_;
     ros::Subscriber sub_event_in_;
+
     boost::mutex mtx;
     boost::condition_variable cond;
+
 };
 
 }   // namespace verilook_ros

@@ -16,6 +16,7 @@
 #include <NLicensing.hpp>
 #include <Images/NImage.hpp>
 #include <Geometry/NGeometry.hpp>
+#include <NBiometricClient.hpp>
 
 /* Package */
 #include "face_detection_verilook_node.h"
@@ -42,11 +43,13 @@ using Neurotec::NObjectSet;
 using Neurotec::HNObject;
 using Neurotec::NTrue;
 using Neurotec::NFalse;
+using Neurotec::Biometrics::Client::NBiometricClient;
 
 typedef void ( FaceDetectionVerilookNode::* GetImageType )(HNImage*);
 
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
-                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect);
+                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect,
+                                    NBiometricClient & biometricClient);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
 NResult printErrorMsg(const std::string szErrorMessage, NResult result);

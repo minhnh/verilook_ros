@@ -18,10 +18,13 @@ FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 {
     // Obtain VeriLook license
     obtainVerilookLicenses();
+    // create biometric client
+    biometricClient.SetBiometricTypes(Neurotec::Biometrics::nbtFace);
+    biometricClient.Initialize();
 
     // Start camera service
-    ros::ServiceServer service = nh.advertiseService(
-            "create_face_template", &FaceDetectionVerilookNode::createTemplateServiceCallback, this);
+//    ros::ServiceServer service = nh.advertiseService(
+//            "create_face_template", &FaceDetectionVerilookNode::createTemplateServiceCallback, this);
 
     // event publisher and subscriber
     pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
@@ -32,6 +35,10 @@ FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 FaceDetectionVerilookNode::~FaceDetectionVerilookNode()
 {
     releaseVerilookLicenses();
+    if (!biometricClient.IsNull())
+    {
+        biometricClient.Cancel();
+    }
     NCore::OnExit(false);
 }
 
@@ -104,7 +111,7 @@ bool FaceDetectionVerilookNode::createTemplateServiceCallback(
     NRect boundingRect;
     NResult result = enrollFaceFromImageFunction(request.output_filename,
                                                  &FaceDetectionVerilookNode::getImage,
-                                                 this, &boundingRect);
+                                                 this, &boundingRect, biometricClient);
 
     // Fill the service response
     if (NFailed(result))
@@ -140,7 +147,7 @@ void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg
         NRect boundingRect;
         NResult result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
                                                      &FaceDetectionVerilookNode::getImage,
-                                                     this, &boundingRect);
+                                                     this, &boundingRect, biometricClient);
 
         // Fill the service response
         if (NFailed(result))
