@@ -21,6 +21,7 @@
 namespace verilook_ros
 {
 
+using Neurotec::Biometrics::NTemplateSize;
 using Neurotec::Licensing::NLicense;
 using Neurotec::HNError;
 using Neurotec::NErrorReport;
@@ -98,7 +99,7 @@ NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType g
     }
 
     // set that face will be captured from image stream
-    result = Neurotec::Biometrics::NBiometricSetHasMoreSamples(neurotecObjects.hFace, Neurotec::NTrue);
+    result = Neurotec::Biometrics::NBiometricSetHasMoreSamples(neurotecObjects.hFace, NTrue);
     if (NFailed(result))
     {
         result = printErrorMsgWithLastError(N_T("NBiometricSetHasMoreSamples() failed (result = %d)!"), result);
@@ -119,6 +120,47 @@ NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType g
     {
         result = printErrorMsgWithLastError(N_T("NBiometricClientCreate() failed (result = %d)!"), result);
         return result;
+    }
+
+    NTemplateSize templateSize = Neurotec::Biometrics::ntsLarge;
+    Neurotec::NBoolean parameter = NTrue;
+    Neurotec::NBoolean hasEx = NFalse;
+
+    // set template size to large
+    using Neurotec::Biometrics::NTemplateSizeTypeOf;
+    result = Neurotec::NObjectSetPropertyP(neurotecObjects.hBiometricClient, N_T("Faces.TemplateSize"),
+                                           N_TYPE_OF(NTemplateSize), Neurotec::naNone,
+                                           &templateSize, sizeof(templateSize), 1, NTrue);
+    if (NFailed(result))
+    {
+        result = printErrorMsgWithLastError(N_T("NObjectSetProperty() failed (result = %d)!"), result);
+        return result;
+    }
+
+    using Neurotec::Licensing::NLicenseIsComponentActivated;
+    using Neurotec::Licensing::NLicenseIsComponentActivatedA;
+    //TODO: make this in the same scheme as other license components
+    const Neurotec::NChar * additionalComponents = N_T("Biometrics.FaceSegmentsDetection");
+    result = NLicenseIsComponentActivated(additionalComponents, &hasEx);
+    if (NFailed(result))
+    {
+        result = printErrorMsgWithLastError(N_T("NLicenseIsComponentActivated() failed (result = %d)!"), result);
+        return result;
+    }
+
+    if (hasEx)
+    {
+        // set detect all facial features
+        using Neurotec::NBooleanTypeOf;
+        result = Neurotec::NObjectSetPropertyP(neurotecObjects.hBiometricClient,
+                                               N_T("Faces.DetectAllFeaturePoints"),
+                                               N_TYPE_OF(NBoolean), Neurotec::naNone,
+                                               &parameter, sizeof(parameter), 1, NTrue);
+        if (NFailed(result))
+        {
+            result = printErrorMsgWithLastError(N_T("NObjectSetProperty() failed (result = %d)!"), result);
+            return result;
+        }
     }
 
     return result;

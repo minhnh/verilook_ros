@@ -27,7 +27,6 @@ namespace verilook_ros
 #define LICENSE_COMPONENTS \
 {\
     "Biometrics.FaceDetection", \
-    "Devices.Cameras", \
     "Biometrics.FaceExtraction", \
     "Biometrics.FaceMatching" \
 }
@@ -41,6 +40,8 @@ using Neurotec::Images::HNImage;
 using Neurotec::Geometry::NRect;
 using Neurotec::NObjectSet;
 using Neurotec::HNObject;
+using Neurotec::NTrue;
+using Neurotec::NFalse;
 
 typedef void ( FaceDetectionVerilookNode::* GetImageType )(HNImage*);
 
