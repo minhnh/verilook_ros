@@ -5,7 +5,6 @@
  */
 
 /* ROS */
-#include "image_transport/image_transport.h"
 
 /* Package */
 #include <verilook_wrapper.h>
@@ -69,11 +68,14 @@ void FaceDetectionVerilookNode::imageMessageCallback(const sensor_msgs::Image::C
     }
 
     cond.notify_one();
+
+    // Shutdown the image stream to save CPU usage
+    image_sub.shutdown();
 }
 
 bool FaceDetectionVerilookNode::condFulfilled()
 {
-    return image_buffer != 0;
+    return image_buffer != NULL;
 }
 
 // Callback, from which EnrollFaceFromImageFunction gets its images.
@@ -140,12 +142,13 @@ void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg
         // Subscribe to the image stream
         ros::NodeHandle nh;
         image_transport::ImageTransport it(nh);
-        image_transport::Subscriber sub = it.subscribe(
+        image_sub = it.subscribe(
                 "/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
 
         // Invoke the main big "create template" or "enroll face" routine.
         NRect boundingRect;
-        NResult result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
+        NResult result = Neurotec::N_OK;
+        result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
                                                      &FaceDetectionVerilookNode::getImage,
                                                      this, &boundingRect, biometricClient);
 
@@ -160,8 +163,6 @@ void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg
             ROS_INFO_STREAM(PACKAGE_NAME << ": X = " << boundingRect.X << ", Y = " << boundingRect.Y);
         }
 
-        // Shutdown the image stream to save CPU usage
-        sub.shutdown();
     }
 }
 

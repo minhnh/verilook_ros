@@ -11,6 +11,7 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/Image.h>
+#include "image_transport/image_transport.h"
 
 /* Neurotec */
 #include <Images/NImage.hpp>
@@ -42,6 +43,7 @@ private:
 
     ros::Publisher pub_event_out_;
     ros::Subscriber sub_event_in_;
+    image_transport::Subscriber image_sub;
 
     boost::mutex mtx;
     boost::condition_variable cond;
