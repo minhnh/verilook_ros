@@ -7,8 +7,9 @@
 /* ROS */
 
 /* Package */
-#include <face_recognition_verilook_node.h>
-#include <verilook_wrapper.h>
+#include "verilook_enroll_from_image.h"
+#include "face_recognition_verilook_node.h"
+#include "verilook_wrapper.h"
 
 namespace verilook_ros
 {

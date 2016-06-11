@@ -46,6 +46,7 @@ include_directories(
 add_executable(${NODE_EXEC_FACE_RECOGNITION}
     ros/src/face_recognition_verilook_node.cpp
     ros/src/verilook_wrapper.cpp
+    ros/src/verilook_enroll_from_image.cpp
 )
 
 ## Create the nodelet tutorial library
@@ -53,6 +54,7 @@ add_library(${NODELET_LIBRARY}
     ros/src/face_recognition_verilook_nodelet.cpp
     ros/src/face_recognition_verilook_node.cpp
     ros/src/verilook_wrapper.cpp
+    ros/src/verilook_enroll_from_image.cpp
 )
 
 target_link_libraries(${NODELET_LIBRARY}
