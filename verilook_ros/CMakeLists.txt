@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 2.8.3)
 project(verilook_ros)
 
 set(CMAKE_BUILD_TYPE Debug)
-set(NODELET_LIBRARY face_detection_verilook_nodelet)
-set(NODE_EXEC_FACE_DETECTION face_detection_verilook_node)
+set(NODELET_LIBRARY face_recognition_verilook_nodelet)
+set(NODE_EXEC_FACE_RECOGNITION face_recognition_verilook_node)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -29,7 +29,7 @@ generate_messages(DEPENDENCIES
 
 catkin_package(
     LIBRARIES
-        face_detection_verilook
+        face_recognition_verilook
     CATKIN_DEPENDS
         nodelet
         roscpp
@@ -43,15 +43,15 @@ include_directories(
     ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(${NODE_EXEC_FACE_DETECTION}
-    ros/src/face_detection_verilook_node.cpp
+add_executable(${NODE_EXEC_FACE_RECOGNITION}
+    ros/src/face_recognition_verilook_node.cpp
     ros/src/verilook_wrapper.cpp
 )
 
 ## Create the nodelet tutorial library
 add_library(${NODELET_LIBRARY}
-    ros/src/face_detection_verilook_nodelet.cpp
-    ros/src/face_detection_verilook_node.cpp
+    ros/src/face_recognition_verilook_nodelet.cpp
+    ros/src/face_recognition_verilook_node.cpp
     ros/src/verilook_wrapper.cpp
 )
 
@@ -63,7 +63,7 @@ target_link_libraries(${NODELET_LIBRARY}
     ${catkin_LIBRARIES}
 )
 
-target_link_libraries(${NODE_EXEC_FACE_DETECTION}
+target_link_libraries(${NODE_EXEC_FACE_RECOGNITION}
     -lNBiometricClient
     -lNBiometrics
     -lNLicensing
@@ -88,7 +88,7 @@ install(TARGETS ${NODELET_LIBRARY}
 ## Mark other files for installation (e.g. launch and bag files, etc.)
 install(
     FILES
-        nodelet_face_detection_verilook.xml
+        nodelet_face_recognition_verilook.xml
     DESTINATION
         ${CATKIN_PACKAGE_SHARE_DESTINATION}
 )

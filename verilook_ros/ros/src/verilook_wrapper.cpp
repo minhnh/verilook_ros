@@ -70,7 +70,7 @@ struct NeurotecObjects
 };
 
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
-                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect,
+                                    FaceRecognitionVerilookNode* obj, NRect *pBoundingRect,
                                     NBiometricClient & biometricClient)
 {
     NResult result = Neurotec::N_OK;

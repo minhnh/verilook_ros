@@ -19,6 +19,6 @@
     <depend>image_transport</depend>
 
     <export>
-        <nodelet plugin="${prefix}/nodelet_face_detection_verilook.xml"/>
+        <nodelet plugin="${prefix}/nodelet_face_recognition_verilook.xml"/>
     </export>
 </package>

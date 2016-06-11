@@ -13,13 +13,13 @@
 #include <NCore.hpp>
 #include <Core/NTypes.hpp>
 #include <Core/NDefs.h>
+#include <face_recognition_verilook_node.h>
 #include <NLicensing.hpp>
 #include <Images/NImage.hpp>
 #include <Geometry/NGeometry.hpp>
 #include <NBiometricClient.hpp>
 
 /* Package */
-#include "face_detection_verilook_node.h"
 
 namespace verilook_ros
 {
@@ -45,10 +45,10 @@ using Neurotec::NTrue;
 using Neurotec::NFalse;
 using Neurotec::Biometrics::Client::NBiometricClient;
 
-typedef void ( FaceDetectionVerilookNode::* GetImageType )(HNImage*);
+typedef void ( FaceRecognitionVerilookNode::* GetImageType )(HNImage*);
 
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
-                                    FaceDetectionVerilookNode* obj, NRect *pBoundingRect,
+                                    FaceRecognitionVerilookNode* obj, NRect *pBoundingRect,
                                     NBiometricClient & biometricClient);
 void setupBiometricClient(NBiometricClient &biometricClient);
 void obtainVerilookLicenses();
