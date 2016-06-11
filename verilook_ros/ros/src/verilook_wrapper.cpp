@@ -69,7 +69,7 @@ struct NeurotecObjects
     Neurotec::HNString hBiometricStatus;
 };
 
-NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
+NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageFunctionType getImage,
                                     FaceRecognitionVerilookNode* obj, NRect *pBoundingRect,
                                     NBiometricClient & biometricClient)
 {

@@ -45,9 +45,9 @@ using Neurotec::NTrue;
 using Neurotec::NFalse;
 using Neurotec::Biometrics::Client::NBiometricClient;
 
-typedef void ( FaceRecognitionVerilookNode::* GetImageType )(HNImage*);
+typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(HNImage*);
 
-NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
+NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageFunctionType getImage,
                                     FaceRecognitionVerilookNode* obj, NRect *pBoundingRect,
                                     NBiometricClient & biometricClient);
 void setupBiometricClient(NBiometricClient &biometricClient);

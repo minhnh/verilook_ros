@@ -27,12 +27,15 @@ VerilookEnrollFromImage::~VerilookEnrollFromImage()
 
 }
 
-void VerilookEnrollFromImage::extractTemplate(std::string &fileName)
+void VerilookEnrollFromImage::extractTemplate(GetImageFunctionType getImage)
 {
+    //TODO: check type of HNImage himage, may need to be NImage
     setBiometricClientParams();
     subject_ = Neurotec::Biometrics::NSubject();
     Neurotec::Biometrics::NFace face;
-    face.SetFileName(fileName);
+    Neurotec::Biometrics::HNImage himage;
+    getImage(&himage);
+    face.SetImage(himage);
     subject_.GetFaces().Add(face);
     Neurotec::NAsyncOperation operation = biometricClient_.CreateTemplateAsync(subject_);
     operation.AddCompletedCallback(&VerilookEnrollFromImage::onCreateTemplateCompletedCallback, this);
@@ -45,7 +48,14 @@ void VerilookEnrollFromImage::onCreateTemplateCompletedCallback()
 
 void VerilookEnrollFromImage::setBiometricClientParams()
 {
-
+    // Can run GetFacesMaximalRoll and SetFacesMaximalYaw from biometric client here
+    biometricClient_.SetFacesDetectAllFeaturePoints(isSegmentationActivated_);
+    biometricClient_.SetFacesDetectBaseFeaturePoints(isSegmentationActivated_);
+    biometricClient_.SetFacesDetermineGender(isSegmentationActivated_);
+    biometricClient_.SetFacesDetermineAge(isSegmentationActivated_);
+    biometricClient_.SetFacesDetectProperties(isSegmentationActivated_);
+    biometricClient_.SetFacesRecognizeEmotion(isSegmentationActivated_);
+    biometricClient_.SetFacesRecognizeExpression(isSegmentationActivated_);
 }
 
 void VerilookEnrollFromImage::initializeBiometricParams()

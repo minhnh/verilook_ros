@@ -11,7 +11,9 @@
 /* System */
 #include <string>
 /* Neurotec */
-#include <NBiometricClient.hpp>>
+#include <NBiometricClient.hpp>
+/* Package */
+#include "verilook_wrapper.h"
 
 namespace verilook_ros
 {
@@ -25,7 +27,7 @@ public:
     ~VerilookEnrollFromImage();
 
 private:
-    void extractTemplate(std::string &fileName);
+    void extractTemplate(GetImageFunctionType getImage);
     void onCreateTemplateCompletedCallback();
     void setBiometricClientParams();
     void initializeBiometricParams();
