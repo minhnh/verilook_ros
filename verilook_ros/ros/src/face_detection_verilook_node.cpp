@@ -15,11 +15,19 @@ namespace verilook_ros
 
 FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 {
-    // Obtain VeriLook license
-    obtainVerilookLicenses();
-    // create biometric client
-    biometricClient.SetBiometricTypes(Neurotec::Biometrics::nbtFace);
-    biometricClient.Initialize();
+    try
+    {
+        NCore::OnStart();
+
+        obtainVerilookLicenses();
+
+        setupBiometricClient(biometricClient);
+
+    }
+    catch (Neurotec::NError & e)
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": FaceDetectionVerilookNode initialization failed: " << std::string(e.GetMessage()));
+    }
 
     // Start camera service
 //    ros::ServiceServer service = nh.advertiseService(

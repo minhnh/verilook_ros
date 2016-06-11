@@ -50,6 +50,7 @@ typedef void ( FaceDetectionVerilookNode::* GetImageType )(HNImage*);
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType getImage,
                                     FaceDetectionVerilookNode* obj, NRect *pBoundingRect,
                                     NBiometricClient & biometricClient);
+void setupBiometricClient(NBiometricClient &biometricClient);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
 NResult printErrorMsg(const std::string szErrorMessage, NResult result);

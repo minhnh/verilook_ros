@@ -19,7 +19,7 @@ namespace verilook_ros
 
 using Neurotec::Biometrics::NTemplateSize;
 using Neurotec::Licensing::NLicense;
-using Neurotec::HNError;
+using Neurotec::NError;
 using Neurotec::NErrorReport;
 
 struct NeurotecObjects
@@ -127,6 +127,37 @@ NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageType g
     return result;
 }
 
+void setupBiometricClient(NBiometricClient &biometricClient)
+{
+    try
+    {
+        const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
+        biometricClient.SetDatabaseConnectionToSQLite(dbPath);
+        biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
+
+        if (!NLicense::IsComponentActivated("Biometrics.FaceSegmentation"))
+        {
+            biometricClient.SetFacesDetectAllFeaturePoints(false);
+            biometricClient.SetFacesDetectBaseFeaturePoints(false);
+            biometricClient.SetFacesDetermineGender(false);
+            biometricClient.SetFacesDetermineAge(false);
+            biometricClient.SetFacesRecognizeEmotion(false);
+            biometricClient.SetFacesDetectProperties(false);
+            biometricClient.SetFacesRecognizeExpression(false);
+        }
+
+        biometricClient.SetMatchingWithDetails(true);
+        biometricClient.SetBiometricTypes(Neurotec::Biometrics::nbtFace);
+        biometricClient.Initialize();
+
+    }
+    catch (NError & e)
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": setup biometric client failed: " << std::string(e.GetMessage()));
+        throw e;
+    }
+}
+
 void obtainVerilookLicenses()
 {
     const std::string Components[] = LICENSE_COMPONENTS;
@@ -134,31 +165,31 @@ void obtainVerilookLicenses()
     ROS_INFO_STREAM(PACKAGE_NAME << ": obtaining licenses...");
     try
     {
-        NCore::OnStart();
         for (unsigned int i = 0; i < sizeof(Components)/sizeof(*Components); i++)
         {
             result = NLicense::ObtainComponents(LICENSE_SERVER, LICENSE_PORT, Components[i]);
             if (!result)
             {
-                ROS_ERROR_STREAM(PACKAGE_NAME << ": License for " << Components[i] << " is not available");
+                ROS_ERROR_STREAM(PACKAGE_NAME << ": license for " << Components[i] << " is not available");
             }
             else
             {
-                ROS_INFO_STREAM(PACKAGE_NAME << ": License for " << Components[i] << " obtained successfully");
+                ROS_INFO_STREAM(PACKAGE_NAME << ": license for " << Components[i] << " obtained successfully");
             }
         }
     }
-    catch (Neurotec::NError& e)
+    catch (NError& e)
     {
-        ROS_ERROR_STREAM(PACKAGE_NAME << ": " << std::string(e.ToString()));
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": obtaining licenses failed: " << std::string(e.GetMessage()));
         releaseVerilookLicenses();
+        throw e;
     }
 }
 
 void releaseVerilookLicenses()
 {
     const std::string Components[] = LICENSE_COMPONENTS;
-    ROS_INFO_STREAM(PACKAGE_NAME << ": releasing licenses");
+    ROS_INFO_STREAM(PACKAGE_NAME << ": releasing licenses...");
     try
     {
         for (unsigned int i = 0; i < sizeof(Components)/sizeof(*Components); i++)
@@ -168,11 +199,8 @@ void releaseVerilookLicenses()
     }
     catch (Neurotec::NError& e)
     {
-        ROS_ERROR_STREAM(std::string(e.ToString()));
-    }
-    catch (std::exception& e)
-    {
-        ROS_ERROR_STREAM(e.what());
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": releasing licenses failed: " << std::string(e.GetMessage()));
+        throw e;
     }
 }
 
@@ -184,7 +212,7 @@ NResult printErrorMsg(const std::string szErrorMessage, NResult result)
 
 NResult printErrorMsgWithLastError(const std::string szErrorMessage, NResult result)
 {
-    HNError hError = NULL;
+    Neurotec::HNError hError = NULL;
 
     ROS_ERROR_STREAM(PACKAGE_NAME << ": " << szErrorMessage << result);
 
@@ -203,11 +231,11 @@ NResult printErrorMsgWithLastError(const std::string szErrorMessage, NResult res
     return result;
 }
 
-NResult retrieveErrorCodeRecursive(NResult result, HNError hError)
+NResult retrieveErrorCodeRecursive(NResult result, Neurotec::HNError hError)
 {
     if (result == Neurotec::N_E_AGGREGATE && hError != NULL)
     {
-        HNError hInnerError = NULL;
+        Neurotec::HNError hInnerError = NULL;
         Neurotec::NErrorGetInnerErrorEx(hError, &hInnerError);
         Neurotec::NErrorGetCodeEx(hInnerError, &result);
         result = retrieveErrorCodeRecursive(result, hInnerError);
