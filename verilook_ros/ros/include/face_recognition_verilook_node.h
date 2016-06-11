@@ -11,7 +11,7 @@
 #include <ros/ros.h>
 #include <std_msgs/String.h>
 #include <sensor_msgs/Image.h>
-#include "image_transport/image_transport.h"
+#include <image_transport/image_transport.h>
 
 /* Neurotec */
 #include <Images/NImage.hpp>
@@ -25,11 +25,11 @@ namespace verilook_ros
 
 #define PACKAGE_NAME    "verilook_ros"
 
-class FaceDetectionVerilookNode
+class FaceRecognitionVerilookNode
 {
 public:
-    FaceDetectionVerilookNode(ros::NodeHandle nh);
-    ~FaceDetectionVerilookNode();
+    FaceRecognitionVerilookNode(ros::NodeHandle nh);
+    ~FaceRecognitionVerilookNode();
 
 private:
     void eventInCallback(const std_msgs::String::Ptr &msg);

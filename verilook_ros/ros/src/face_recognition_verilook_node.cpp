@@ -7,13 +7,13 @@
 /* ROS */
 
 /* Package */
+#include <face_recognition_verilook_node.h>
 #include <verilook_wrapper.h>
-#include <face_detection_verilook_node.h>
 
 namespace verilook_ros
 {
 
-FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
+FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 {
     try
     {
@@ -35,11 +35,11 @@ FaceDetectionVerilookNode::FaceDetectionVerilookNode(ros::NodeHandle nh)
 
     // event publisher and subscriber
     pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
-    sub_event_in_ = nh.subscribe("event_in", 1, &FaceDetectionVerilookNode::eventInCallback, this);
+    sub_event_in_ = nh.subscribe("event_in", 1, &FaceRecognitionVerilookNode::eventInCallback, this);
 
 }
 
-FaceDetectionVerilookNode::~FaceDetectionVerilookNode()
+FaceRecognitionVerilookNode::~FaceRecognitionVerilookNode()
 {
     releaseVerilookLicenses();
     if (!biometricClient.IsNull())
@@ -50,7 +50,7 @@ FaceDetectionVerilookNode::~FaceDetectionVerilookNode()
 }
 
 // Put incoming sensor_msgs/Image messages to a buffer
-void FaceDetectionVerilookNode::imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg)
+void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg)
 {
     using Neurotec::Images::NImageCreateFromDataEx;
     using Neurotec::Images::NPF_RGB_8U;
@@ -81,17 +81,17 @@ void FaceDetectionVerilookNode::imageMessageCallback(const sensor_msgs::Image::C
     image_sub.shutdown();
 }
 
-bool FaceDetectionVerilookNode::condFulfilled()
+bool FaceRecognitionVerilookNode::condFulfilled()
 {
     return image_buffer != NULL;
 }
 
 // Callback, from which EnrollFaceFromImageFunction gets its images.
-void FaceDetectionVerilookNode::getImage(HNImage *phImage)
+void FaceRecognitionVerilookNode::getImage(HNImage *phImage)
 {
     boost::unique_lock<boost::mutex> lock(mtx);
     boost::system_time const timeout = boost::get_system_time() + boost::posix_time::seconds(1);
-    if (cond.timed_wait(lock, timeout, boost::bind(&FaceDetectionVerilookNode::condFulfilled, this)))
+    if (cond.timed_wait(lock, timeout, boost::bind(&FaceRecognitionVerilookNode::condFulfilled, this)))
     {
         *phImage = image_buffer;
         image_buffer = NULL;
@@ -102,7 +102,7 @@ void FaceDetectionVerilookNode::getImage(HNImage *phImage)
     }
 }
 
-bool FaceDetectionVerilookNode::createTemplateServiceCallback(
+bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
         CreateTemplate::Request& request,
         CreateTemplate::Response& response)
 {
@@ -115,12 +115,12 @@ bool FaceDetectionVerilookNode::createTemplateServiceCallback(
     ros::NodeHandle nh;
     image_transport::ImageTransport it(nh);
     image_transport::Subscriber sub = it.subscribe(
-            "/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
+            "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
 
     // Invoke the main big "create template" or "enroll face" routine.
     NRect boundingRect;
     NResult result = enrollFaceFromImageFunction(request.output_filename,
-                                                 &FaceDetectionVerilookNode::getImage,
+                                                 &FaceRecognitionVerilookNode::getImage,
                                                  this, &boundingRect, biometricClient);
 
     // Fill the service response
@@ -142,7 +142,7 @@ bool FaceDetectionVerilookNode::createTemplateServiceCallback(
     return true;
 }
 
-void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
+void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
 {
     ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
     if (msg->data == "e_start")
@@ -151,13 +151,13 @@ void FaceDetectionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg
         ros::NodeHandle nh;
         image_transport::ImageTransport it(nh);
         image_sub = it.subscribe(
-                "/usb_cam/image_raw", 10, &FaceDetectionVerilookNode::imageMessageCallback, this);
+                "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
 
         // Invoke the main big "create template" or "enroll face" routine.
         NRect boundingRect;
         NResult result = Neurotec::N_OK;
         result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
-                                                     &FaceDetectionVerilookNode::getImage,
+                                                     &FaceRecognitionVerilookNode::getImage,
                                                      this, &boundingRect, biometricClient);
 
         // Fill the service response
@@ -182,7 +182,7 @@ int main(int argc, char * argv[])
 
     ros::NodeHandle nh("~");
 
-    verilook_ros::FaceDetectionVerilookNode face_detection_verilook_node(nh);
+    verilook_ros::FaceRecognitionVerilookNode face_detection_verilook_node(nh);
 
     // Start ROS node. We need at least two threads so that VeriLook can be
     // supplied with images in the middle of a service call.
