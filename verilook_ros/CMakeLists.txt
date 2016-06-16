@@ -17,6 +17,12 @@ find_package(catkin REQUIRED COMPONENTS
     ${catkin_BUILD_PACKAGES}
 )
 
+## Additional header files
+include_directories(
+    ros/include
+    ${catkin_INCLUDE_DIRS}
+)
+
 ## Available service files in the 'srv' folder
 add_service_files(
     FILES
@@ -33,21 +39,12 @@ catkin_package(
     CATKIN_DEPENDS
         nodelet
         roscpp
+        message_runtime
         std_msgs
         sensor_msgs
 )
 
-## Additional header files
-include_directories(
-    ros/include
-    ${catkin_INCLUDE_DIRS}
-)
 
-add_executable(${NODE_EXEC_FACE_RECOGNITION}
-    ros/src/face_recognition_verilook_node.cpp
-    ros/src/verilook_wrapper.cpp
-    ros/src/verilook_enroll_from_image.cpp
-)
 
 ## Create the nodelet tutorial library
 add_library(${NODELET_LIBRARY}
@@ -57,12 +54,28 @@ add_library(${NODELET_LIBRARY}
     ros/src/verilook_enroll_from_image.cpp
 )
 
+add_dependencies(${NODELET_LIBRARY} 
+   ${PROJECT_NAME}_gencpp
+   ${catkin_EXPORTED_TARGETS}
+)
+
 target_link_libraries(${NODELET_LIBRARY}
     -lNBiometricClient
     -lNBiometrics
     -lNLicensing
     -lNCore
     ${catkin_LIBRARIES}
+)
+
+add_executable(${NODE_EXEC_FACE_RECOGNITION}
+    ros/src/face_recognition_verilook_node.cpp
+    ros/src/verilook_wrapper.cpp
+    ros/src/verilook_enroll_from_image.cpp
+)
+
+add_dependencies(${NODE_EXEC_FACE_RECOGNITION} 
+    ${PROJECT_NAME}_gencpp
+    ${catkin_EXPORTED_TARGETS}
 )
 
 target_link_libraries(${NODE_EXEC_FACE_RECOGNITION}
@@ -74,11 +87,6 @@ target_link_libraries(${NODE_EXEC_FACE_RECOGNITION}
     ${catkin_LIBRARIES}
 )
 
-if(catkin_EXPORTED_LIBRARIES)
-    add_dependencies(${NODELET_LIBRARY}
-        ${catkin_EXPORTED_LIBRARIES}
-    )
-endif()
 
 ## Mark the nodelet library for installations
 install(TARGETS ${NODELET_LIBRARY}
