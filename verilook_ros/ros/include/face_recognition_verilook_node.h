@@ -19,27 +19,32 @@
 
 /* Package */
 #include "verilook_ros/CreateTemplate.h"
+#include "verilook_enroll_from_image.h"
 
 namespace verilook_ros
 {
 
 #define PACKAGE_NAME    "verilook_ros"
 
+/* Forward declarations */
+class VerilookEnrollFromImage;
+
 class FaceRecognitionVerilookNode
 {
 public:
     FaceRecognitionVerilookNode(ros::NodeHandle nh);
     ~FaceRecognitionVerilookNode();
+    void getImage(Neurotec::Images::HNImage *phImage);
 
 private:
     void eventInCallback(const std_msgs::String::Ptr &msg);
     bool condFulfilled();
-    void getImage(Neurotec::Images::HNImage *phImage);
     void imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg);
     bool createTemplateServiceCallback(CreateTemplate::Request& request, CreateTemplate::Response& response);
 
     Neurotec::Images::HNImage image_buffer = NULL;
-    Neurotec::Biometrics::Client::NBiometricClient biometricClient;
+    Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
+    VerilookEnrollFromImage * m_enrollFromImage;
 
     ros::Publisher pub_event_out_;
     ros::Subscriber sub_event_in_;

@@ -17,6 +17,10 @@
 
 namespace verilook_ros
 {
+/* Forward declarations */
+class FaceRecognitionVerilookNode;
+
+typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(Neurotec::Images::HNImage*);
 
 using Neurotec::Biometrics::Client::NBiometricClient;
 
@@ -25,10 +29,10 @@ class VerilookEnrollFromImage
 public:
     VerilookEnrollFromImage(NBiometricClient &biometricClient);
     ~VerilookEnrollFromImage();
+    void extractTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
 
 private:
-    void extractTemplate(GetImageFunctionType getImage);
-    void onCreateTemplateCompletedCallback();
+    static void onCreateTemplateCompletedCallback(Neurotec::EventArgs args);
     void setBiometricClientParams();
     void initializeBiometricParams();
 

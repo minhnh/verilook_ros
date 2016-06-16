@@ -27,22 +27,31 @@ VerilookEnrollFromImage::~VerilookEnrollFromImage()
 
 }
 
-void VerilookEnrollFromImage::extractTemplate(GetImageFunctionType getImage)
+void VerilookEnrollFromImage::extractTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
     //TODO: check type of HNImage himage, may need to be NImage
     setBiometricClientParams();
     m_subject = Neurotec::Biometrics::NSubject();
     Neurotec::Biometrics::NFace face;
     Neurotec::Biometrics::HNImage himage;
-    getImage(&himage);
-    face.SetImage(himage);
+
+    (obj->getImage)(&himage);
+
+    face.SetImage(Neurotec::Images::NImage(himage, true));
+
     m_subject.GetFaces().Add(face);
+
+    //TODO: set subject ID
+
+    m_subject.SetMultipleSubjects(true);
+
     Neurotec::NAsyncOperation operation = m_biometricClient.CreateTemplateAsync(m_subject);
     operation.AddCompletedCallback(&VerilookEnrollFromImage::onCreateTemplateCompletedCallback, this);
 }
 
-void VerilookEnrollFromImage::onCreateTemplateCompletedCallback()
+void VerilookEnrollFromImage::onCreateTemplateCompletedCallback(Neurotec::EventArgs args)
 {
+    ROS_INFO_STREAM(PACKAGE_NAME << ": in create template callback");
     try
     {
         //TODO: Write to database or to file?

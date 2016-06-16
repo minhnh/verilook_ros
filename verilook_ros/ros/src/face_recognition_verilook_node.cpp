@@ -7,14 +7,13 @@
 /* ROS */
 
 /* Package */
-#include "verilook_enroll_from_image.h"
 #include "face_recognition_verilook_node.h"
-#include "verilook_wrapper.h"
 
 namespace verilook_ros
 {
 
 FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
+: m_enrollFromImage(NULL)
 {
     try
     {
@@ -22,8 +21,9 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 
         obtainVerilookLicenses();
 
-        setupBiometricClient(biometricClient);
+        setupBiometricClient(m_biometricClient);
 
+        m_enrollFromImage = new VerilookEnrollFromImage(m_biometricClient);
     }
     catch (Neurotec::NError & e)
     {
@@ -43,9 +43,9 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 FaceRecognitionVerilookNode::~FaceRecognitionVerilookNode()
 {
     releaseVerilookLicenses();
-    if (!biometricClient.IsNull())
+    if (!m_biometricClient.IsNull())
     {
-        biometricClient.Cancel();
+        m_biometricClient.Cancel();
     }
     NCore::OnExit(false);
 }
@@ -122,7 +122,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
     NRect boundingRect;
     NResult result = enrollFaceFromImageFunction(request.output_filename,
                                                  &FaceRecognitionVerilookNode::getImage,
-                                                 this, &boundingRect, biometricClient);
+                                                 this, &boundingRect, m_biometricClient);
 
     // Fill the service response
     if (NFailed(result))
@@ -159,8 +159,8 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
         NResult result = Neurotec::N_OK;
         result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
                                                      &FaceRecognitionVerilookNode::getImage,
-                                                     this, &boundingRect, biometricClient);
-
+                                                     this, &boundingRect, m_biometricClient);
+        m_enrollFromImage->extractTemplate(&FaceRecognitionVerilookNode::getImage, this);
         // Fill the service response
         if (NFailed(result))
         {

@@ -45,8 +45,9 @@ catkin_package(
 )
 
 
-
-## Create the nodelet tutorial library
+##
+## NODELET LIBRARY
+##
 add_library(${NODELET_LIBRARY}
     ros/src/face_recognition_verilook_nodelet.cpp
     ros/src/face_recognition_verilook_node.cpp
@@ -67,6 +68,9 @@ target_link_libraries(${NODELET_LIBRARY}
     ${catkin_LIBRARIES}
 )
 
+##
+## NODE EXECUTABLE
+##
 add_executable(${NODE_EXEC_FACE_RECOGNITION}
     ros/src/face_recognition_verilook_node.cpp
     ros/src/verilook_wrapper.cpp
@@ -87,7 +91,9 @@ target_link_libraries(${NODE_EXEC_FACE_RECOGNITION}
     ${catkin_LIBRARIES}
 )
 
-
+##
+## INSTALLATION
+##
 ## Mark the nodelet library for installations
 install(TARGETS ${NODELET_LIBRARY}
     ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

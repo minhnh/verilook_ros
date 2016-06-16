@@ -70,7 +70,7 @@ struct NeurotecObjects
 };
 
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageFunctionType getImage,
-                                    FaceRecognitionVerilookNode* obj, NRect *pBoundingRect,
+                                    FaceRecognitionVerilookNode * obj, NRect *pBoundingRect,
                                     NBiometricClient & biometricClient)
 {
     NResult result = Neurotec::N_OK;
@@ -131,9 +131,10 @@ void setupBiometricClient(NBiometricClient &biometricClient)
 {
     try
     {
-        const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
-        biometricClient.SetDatabaseConnectionToSQLite(dbPath);
-        biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
+        //TODO: can use database for efficiency
+        //const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
+        //biometricClient.SetDatabaseConnectionToSQLite(dbPath);
+        //biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
 
         if (!NLicense::IsComponentActivated("Biometrics.FaceSegmentation"))
         {

@@ -13,16 +13,18 @@
 #include <NCore.hpp>
 #include <Core/NTypes.hpp>
 #include <Core/NDefs.h>
-#include <face_recognition_verilook_node.h>
 #include <NLicensing.hpp>
 #include <Images/NImage.hpp>
 #include <Geometry/NGeometry.hpp>
 #include <NBiometricClient.hpp>
 
 /* Package */
+#include "face_recognition_verilook_node.h"
 
 namespace verilook_ros
 {
+/* Forward declarations */
+class FaceRecognitionVerilookNode;
 
 /* Definitions */
 #define LICENSE_COMPONENTS \
