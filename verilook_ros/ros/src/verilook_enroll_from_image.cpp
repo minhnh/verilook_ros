@@ -15,10 +15,10 @@ namespace verilook_ros
 {
 
 VerilookEnrollFromImage::VerilookEnrollFromImage(NBiometricClient &biometricClient)
-: biometricClient_(biometricClient), subject_(NULL)
+: m_biometricClient(biometricClient), m_subject(NULL)
 {
     using Neurotec::Licensing::NLicense;
-    isSegmentationActivated_ = NLicense::IsComponentActivated("Biometrics.FaceSegmentsDetection");
+    m_isSegmentationActivated = NLicense::IsComponentActivated("Biometrics.FaceSegmentsDetection");
     initializeBiometricParams();
 }
 
@@ -31,31 +31,39 @@ void VerilookEnrollFromImage::extractTemplate(GetImageFunctionType getImage)
 {
     //TODO: check type of HNImage himage, may need to be NImage
     setBiometricClientParams();
-    subject_ = Neurotec::Biometrics::NSubject();
+    m_subject = Neurotec::Biometrics::NSubject();
     Neurotec::Biometrics::NFace face;
     Neurotec::Biometrics::HNImage himage;
     getImage(&himage);
     face.SetImage(himage);
-    subject_.GetFaces().Add(face);
-    Neurotec::NAsyncOperation operation = biometricClient_.CreateTemplateAsync(subject_);
+    m_subject.GetFaces().Add(face);
+    Neurotec::NAsyncOperation operation = m_biometricClient.CreateTemplateAsync(m_subject);
     operation.AddCompletedCallback(&VerilookEnrollFromImage::onCreateTemplateCompletedCallback, this);
 }
 
 void VerilookEnrollFromImage::onCreateTemplateCompletedCallback()
 {
-
+    try
+    {
+        //TODO: Write to database or to file?
+        //Neurotec::IO::NFile::WriteAllBytes(saveFileDialog.GetPath(), m_subject.GetTemplateBuffer());
+    }
+    catch (Neurotec::NError& e)
+    {
+        //wxExceptionDlg::Show(e);
+    }
 }
 
 void VerilookEnrollFromImage::setBiometricClientParams()
 {
     // Can run GetFacesMaximalRoll and SetFacesMaximalYaw from biometric client here
-    biometricClient_.SetFacesDetectAllFeaturePoints(isSegmentationActivated_);
-    biometricClient_.SetFacesDetectBaseFeaturePoints(isSegmentationActivated_);
-    biometricClient_.SetFacesDetermineGender(isSegmentationActivated_);
-    biometricClient_.SetFacesDetermineAge(isSegmentationActivated_);
-    biometricClient_.SetFacesDetectProperties(isSegmentationActivated_);
-    biometricClient_.SetFacesRecognizeEmotion(isSegmentationActivated_);
-    biometricClient_.SetFacesRecognizeExpression(isSegmentationActivated_);
+    m_biometricClient.SetFacesDetectAllFeaturePoints(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetectBaseFeaturePoints(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetermineGender(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetermineAge(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetectProperties(m_isSegmentationActivated);
+    m_biometricClient.SetFacesRecognizeEmotion(m_isSegmentationActivated);
+    m_biometricClient.SetFacesRecognizeExpression(m_isSegmentationActivated);
 }
 
 void VerilookEnrollFromImage::initializeBiometricParams()

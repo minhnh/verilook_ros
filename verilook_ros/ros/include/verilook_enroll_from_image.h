@@ -32,9 +32,9 @@ private:
     void setBiometricClientParams();
     void initializeBiometricParams();
 
-    bool isSegmentationActivated_;
-    Neurotec::Biometrics::NSubject subject_;
-    NBiometricClient biometricClient_;
+    bool m_isSegmentationActivated;
+    Neurotec::Biometrics::NSubject m_subject;
+    NBiometricClient m_biometricClient;
 };
 
 }
