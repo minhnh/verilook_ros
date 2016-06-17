@@ -9,6 +9,9 @@
 #ifndef VERILOOK_ROS_VERILOOK_WRAPPER_H_
 #define VERILOOK_ROS_VERILOOK_WRAPPER_H_
 
+/* System */
+#include <vector>
+
 /* Neurotec */
 #include <NCore.hpp>
 #include <Core/NTypes.hpp>
@@ -39,33 +42,40 @@ class FaceRecognitionVerilookNode;
 using Neurotec::NCore;
 using Neurotec::NResult;
 using Neurotec::NFailed;
-using Neurotec::Images::HNImage;
-using Neurotec::Geometry::NRect;
 using Neurotec::NObjectSet;
 using Neurotec::HNObject;
 using Neurotec::NTrue;
 using Neurotec::NFalse;
-using Neurotec::Biometrics::Client::NBiometricClient;
 
-typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(HNImage*);
+typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(Neurotec::Images::HNImage*);
 
 class VerilookWrapper {
 public:
-    VerilookWrapper(NBiometricClient & biometricClient);
+    VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
     ~VerilookWrapper();
-    void extractTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
+    void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
 private:
-    static void onCreateTemplateCompletedCallback(Neurotec::EventArgs args);
+    void onCreateTemplateCompleted(Neurotec::Biometrics::NBiometricTask createTempalteTask);
+    void onEnrollCompleted(Neurotec::Biometrics::NBiometricTask enrollTask);
+    void onIdentifyCompleted(Neurotec::Biometrics::NBiometricTask identifyTask);
+
+    void onAsyncOperationStarted(Neurotec::NAsyncOperation operation);
+    void onAsyncOperationCompleted(Neurotec::NAsyncOperation operation);
+
+    static void asyncOperationCompletedCallback(Neurotec::EventArgs args);
+
     void setBiometricClientParams();
     void setupBiometricClient();
 
-    NBiometricClient m_biometricClient;
+    Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
+    std::vector<Neurotec::NAsyncOperation> m_asyncOperations;
     bool m_isSegmentationActivated;
 };
 
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageFunctionType getImage,
-                                    FaceRecognitionVerilookNode* obj, NRect *pBoundingRect,
-                                    NBiometricClient & biometricClient);
+                                    FaceRecognitionVerilookNode* obj,
+                                    Neurotec::Geometry::NRect *pBoundingRect,
+                                    Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
 NResult printErrorMsg(const std::string szErrorMessage, NResult result);

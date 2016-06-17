@@ -12,6 +12,9 @@
 namespace verilook_ros
 {
 
+using Neurotec::Images::HNImage;
+using Neurotec::Geometry::NRect;
+
 FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 : m_verilookWrapper(NULL)
 {
@@ -162,7 +165,7 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
         result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
                                                      &FaceRecognitionVerilookNode::getImage,
                                                      this, &boundingRect, m_biometricClient);
-        m_verilookWrapper->extractTemplate(&FaceRecognitionVerilookNode::getImage, this);
+        m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
         // Fill the service response
         if (NFailed(result))
         {

@@ -8,9 +8,6 @@
 /* System */
 #include <string>
 
-/* ROS */
-#include <ros/ros.h>
-
 /* Package */
 #include <verilook_wrapper.h>
 
@@ -21,6 +18,18 @@ using Neurotec::Biometrics::NTemplateSize;
 using Neurotec::Licensing::NLicense;
 using Neurotec::NError;
 using Neurotec::NErrorReport;
+using Neurotec::NObject;
+using Neurotec::NAsyncOperation;
+using Neurotec::Images::HNImage;
+using Neurotec::Geometry::NRect;
+using Neurotec::Biometrics::NBiometricTask;
+using Neurotec::Biometrics::NBiometricOperations;
+using Neurotec::Biometrics::nboCreateTemplate;
+using Neurotec::Biometrics::nboEnroll;
+using Neurotec::Biometrics::nboEnrollWithDuplicateCheck;
+using Neurotec::Biometrics::nboIdentify;
+using Neurotec::Biometrics::nboClear;
+using Neurotec::Biometrics::Client::NBiometricClient;
 
 VerilookWrapper::VerilookWrapper(NBiometricClient & biometricClient)
 : m_biometricClient(biometricClient)
@@ -30,9 +39,17 @@ VerilookWrapper::VerilookWrapper(NBiometricClient & biometricClient)
     setupBiometricClient();
 }
 
-VerilookWrapper::~VerilookWrapper() {}
+VerilookWrapper::~VerilookWrapper()
+{
+    m_biometricClient.Cancel();
+    for (std::vector<NAsyncOperation>::iterator it = m_asyncOperations.begin();
+            it != m_asyncOperations.end(); it++)
+    {
+        it->Cancel();
+    }
+}
 
-void VerilookWrapper::extractTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
+void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
     Neurotec::Biometrics::NSubject subject;
     //TODO: check type of HNImage himage, may need to be NImage
@@ -47,25 +64,93 @@ void VerilookWrapper::extractTemplate(GetImageFunctionType getImage, FaceRecogni
 
     subject.GetFaces().Add(face);
 
-    //TODO: set subject ID
+    subject.SetId("minh");
 
     subject.SetMultipleSubjects(true);
 
-    Neurotec::NAsyncOperation operation = m_biometricClient.CreateTemplateAsync(subject);
-    operation.AddCompletedCallback(&VerilookWrapper::onCreateTemplateCompletedCallback, this);
+    NBiometricTask task = m_biometricClient.CreateTask(nboEnrollWithDuplicateCheck, subject);
+
+    onAsyncOperationStarted(m_biometricClient.PerformTaskAsync(task));
 }
 
-void VerilookWrapper::onCreateTemplateCompletedCallback(Neurotec::EventArgs args)
+void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTask)
 {
-    ROS_INFO_STREAM(PACKAGE_NAME << ": in create template callback");
-    try
+
+}
+
+void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
+{
+    ROS_INFO_STREAM(PACKAGE_NAME << ": onEnrollCompleted");
+
+}
+
+void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
+{
+
+}
+
+struct ObjectCompare : public std::unary_function<NObject, bool>
+{
+    NObject target;
+    explicit ObjectCompare(NAsyncOperation item) : target(item) { }
+    bool operator() (NAsyncOperation arg) { return NObject::Equals(target, arg); }
+};
+
+void VerilookWrapper::onAsyncOperationStarted(NAsyncOperation operation)
+{
+    operation.AddCompletedCallback(&VerilookWrapper::asyncOperationCompletedCallback, this);
+    m_asyncOperations.push_back(operation);
+}
+
+void VerilookWrapper::onAsyncOperationCompleted(NAsyncOperation operation)
+{
+    std::vector<NAsyncOperation>::iterator it = std::find_if(
+            m_asyncOperations.begin(), m_asyncOperations.end(), ObjectCompare(operation));
+    if (it != m_asyncOperations.end())
+        m_asyncOperations.erase(it);
+}
+
+void VerilookWrapper::asyncOperationCompletedCallback(Neurotec::EventArgs args)
+{
+    ROS_INFO_STREAM(PACKAGE_NAME << ": in async operation callback");
+    VerilookWrapper * p_verilookWrapper = static_cast<VerilookWrapper*>(args.GetParam());
+    NAsyncOperation operation(static_cast<HNObject>(args.GetObject<NAsyncOperation>().RefHandle()), true);
+
+    p_verilookWrapper->onAsyncOperationCompleted(operation);
+
+    if (!operation.IsCanceled())
     {
-        //TODO: Write to database or to file?
-        //Neurotec::IO::NFile::WriteAllBytes(saveFileDialog.GetPath(), m_subject.GetTemplateBuffer());
-    }
-    catch (Neurotec::NError& e)
-    {
-        //wxExceptionDlg::Show(e);
+        NError error = operation.GetError();
+        if (error.GetHandle())
+            ROS_ERROR_STREAM(PACKAGE_NAME << ": async operation error: " << std::string(error.ToString()));
+        else
+        {
+            Neurotec::NValue result = operation.GetResult();
+            NBiometricTask task = result.ToObject(NBiometricTask::NativeTypeOf()).GetHandle();
+            error = task.GetError();
+            if (error.GetHandle())
+                ROS_ERROR_STREAM(PACKAGE_NAME << ": async task error: " << std::string(error.ToString()));
+            else
+            {
+                NBiometricOperations operations = task.GetOperations();
+                if (operations == nboCreateTemplate)
+                {
+                    p_verilookWrapper->onCreateTemplateCompleted(task);
+                }
+                else if (operations == nboEnroll || operations == nboEnrollWithDuplicateCheck)
+                {
+                    p_verilookWrapper->onEnrollCompleted(task);
+                }
+                else if (operations == nboIdentify)
+                {
+                    p_verilookWrapper->onIdentifyCompleted(task);
+                }
+                else if (operations == nboClear)
+                {
+                    ROS_INFO_STREAM(PACKAGE_NAME << ": database cleared");
+                }
+            }
+        }
     }
 }
 
