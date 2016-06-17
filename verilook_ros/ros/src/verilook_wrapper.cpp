@@ -22,6 +22,96 @@ using Neurotec::Licensing::NLicense;
 using Neurotec::NError;
 using Neurotec::NErrorReport;
 
+VerilookWrapper::VerilookWrapper(NBiometricClient & biometricClient)
+: m_biometricClient(biometricClient)
+{
+    using Neurotec::Licensing::NLicense;
+    m_isSegmentationActivated = NLicense::IsComponentActivated("Biometrics.FaceSegmentsDetection");
+    setupBiometricClient();
+}
+
+VerilookWrapper::~VerilookWrapper() {}
+
+void VerilookWrapper::extractTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
+{
+    Neurotec::Biometrics::NSubject subject;
+    //TODO: check type of HNImage himage, may need to be NImage
+    setBiometricClientParams();
+    subject = Neurotec::Biometrics::NSubject();
+    Neurotec::Biometrics::NFace face;
+    Neurotec::Biometrics::HNImage himage;
+
+    (obj->getImage)(&himage);
+
+    face.SetImage(Neurotec::Images::NImage(himage, true));
+
+    subject.GetFaces().Add(face);
+
+    //TODO: set subject ID
+
+    subject.SetMultipleSubjects(true);
+
+    Neurotec::NAsyncOperation operation = m_biometricClient.CreateTemplateAsync(subject);
+    operation.AddCompletedCallback(&VerilookWrapper::onCreateTemplateCompletedCallback, this);
+}
+
+void VerilookWrapper::onCreateTemplateCompletedCallback(Neurotec::EventArgs args)
+{
+    ROS_INFO_STREAM(PACKAGE_NAME << ": in create template callback");
+    try
+    {
+        //TODO: Write to database or to file?
+        //Neurotec::IO::NFile::WriteAllBytes(saveFileDialog.GetPath(), m_subject.GetTemplateBuffer());
+    }
+    catch (Neurotec::NError& e)
+    {
+        //wxExceptionDlg::Show(e);
+    }
+}
+
+void VerilookWrapper::setBiometricClientParams()
+{
+    // Can run GetFacesMaximalRoll and SetFacesMaximalYaw from biometric client here
+    m_biometricClient.SetFacesDetectAllFeaturePoints(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetectBaseFeaturePoints(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetermineGender(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetermineAge(m_isSegmentationActivated);
+    m_biometricClient.SetFacesDetectProperties(m_isSegmentationActivated);
+    m_biometricClient.SetFacesRecognizeEmotion(m_isSegmentationActivated);
+    m_biometricClient.SetFacesRecognizeExpression(m_isSegmentationActivated);
+}
+
+void VerilookWrapper::setupBiometricClient()
+{
+    try
+    {
+        const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
+        m_biometricClient.SetDatabaseConnectionToSQLite(dbPath);
+        m_biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
+
+        if (!NLicense::IsComponentActivated("Biometrics.FaceSegmentation"))
+        {
+            m_biometricClient.SetFacesDetectAllFeaturePoints(false);
+            m_biometricClient.SetFacesDetectBaseFeaturePoints(false);
+            m_biometricClient.SetFacesDetermineGender(false);
+            m_biometricClient.SetFacesDetermineAge(false);
+            m_biometricClient.SetFacesRecognizeEmotion(false);
+            m_biometricClient.SetFacesDetectProperties(false);
+            m_biometricClient.SetFacesRecognizeExpression(false);
+        }
+
+        m_biometricClient.SetMatchingWithDetails(true);
+        m_biometricClient.SetBiometricTypes(Neurotec::Biometrics::nbtFace);
+        m_biometricClient.Initialize();
+
+    }
+    catch (NError & e)
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": setup biometric client failed: " << std::string(e.GetMessage()));
+        throw e;
+    }
+}
+
 struct NeurotecObjects
 {
     NeurotecObjects() :
@@ -125,38 +215,6 @@ NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageFuncti
     }
 
     return result;
-}
-
-void setupBiometricClient(NBiometricClient &biometricClient)
-{
-    try
-    {
-        //TODO: can use database for efficiency
-        //const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
-        //biometricClient.SetDatabaseConnectionToSQLite(dbPath);
-        //biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
-
-        if (!NLicense::IsComponentActivated("Biometrics.FaceSegmentation"))
-        {
-            biometricClient.SetFacesDetectAllFeaturePoints(false);
-            biometricClient.SetFacesDetectBaseFeaturePoints(false);
-            biometricClient.SetFacesDetermineGender(false);
-            biometricClient.SetFacesDetermineAge(false);
-            biometricClient.SetFacesRecognizeEmotion(false);
-            biometricClient.SetFacesDetectProperties(false);
-            biometricClient.SetFacesRecognizeExpression(false);
-        }
-
-        biometricClient.SetMatchingWithDetails(true);
-        biometricClient.SetBiometricTypes(Neurotec::Biometrics::nbtFace);
-        biometricClient.Initialize();
-
-    }
-    catch (NError & e)
-    {
-        ROS_ERROR_STREAM(PACKAGE_NAME << ": setup biometric client failed: " << std::string(e.GetMessage()));
-        throw e;
-    }
 }
 
 void obtainVerilookLicenses()

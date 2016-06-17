@@ -49,10 +49,23 @@ using Neurotec::Biometrics::Client::NBiometricClient;
 
 typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(HNImage*);
 
+class VerilookWrapper {
+public:
+    VerilookWrapper(NBiometricClient & biometricClient);
+    ~VerilookWrapper();
+    void extractTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
+private:
+    static void onCreateTemplateCompletedCallback(Neurotec::EventArgs args);
+    void setBiometricClientParams();
+    void setupBiometricClient();
+
+    NBiometricClient m_biometricClient;
+    bool m_isSegmentationActivated;
+};
+
 NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageFunctionType getImage,
                                     FaceRecognitionVerilookNode* obj, NRect *pBoundingRect,
                                     NBiometricClient & biometricClient);
-void setupBiometricClient(NBiometricClient &biometricClient);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
 NResult printErrorMsg(const std::string szErrorMessage, NResult result);

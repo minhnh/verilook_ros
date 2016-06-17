@@ -13,7 +13,7 @@ namespace verilook_ros
 {
 
 FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
-: m_enrollFromImage(NULL)
+: m_verilookWrapper(NULL)
 {
     try
     {
@@ -21,9 +21,8 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 
         obtainVerilookLicenses();
 
-        setupBiometricClient(m_biometricClient);
+        m_verilookWrapper = new VerilookWrapper(m_biometricClient);
 
-        m_enrollFromImage = new VerilookEnrollFromImage(m_biometricClient);
     }
     catch (Neurotec::NError & e)
     {
@@ -47,7 +46,10 @@ FaceRecognitionVerilookNode::~FaceRecognitionVerilookNode()
     {
         m_biometricClient.Cancel();
     }
+
     NCore::OnExit(false);
+
+    delete m_verilookWrapper;
 }
 
 // Put incoming sensor_msgs/Image messages to a buffer
@@ -160,7 +162,7 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
         result = enrollFaceFromImageFunction("/home/minh/.ros/data/verilook_ros/template_file",
                                                      &FaceRecognitionVerilookNode::getImage,
                                                      this, &boundingRect, m_biometricClient);
-        m_enrollFromImage->extractTemplate(&FaceRecognitionVerilookNode::getImage, this);
+        m_verilookWrapper->extractTemplate(&FaceRecognitionVerilookNode::getImage, this);
         // Fill the service response
         if (NFailed(result))
         {

@@ -19,7 +19,7 @@
 
 /* Package */
 #include "verilook_ros/CreateTemplate.h"
-#include "verilook_enroll_from_image.h"
+#include "verilook_wrapper.h"
 
 namespace verilook_ros
 {
@@ -27,7 +27,7 @@ namespace verilook_ros
 #define PACKAGE_NAME    "verilook_ros"
 
 /* Forward declarations */
-class VerilookEnrollFromImage;
+class VerilookWrapper;
 
 class FaceRecognitionVerilookNode
 {
@@ -44,7 +44,7 @@ private:
 
     Neurotec::Images::HNImage image_buffer = NULL;
     Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
-    VerilookEnrollFromImage * m_enrollFromImage;
+    VerilookWrapper * m_verilookWrapper;
 
     ros::Publisher pub_event_out_;
     ros::Subscriber sub_event_in_;
