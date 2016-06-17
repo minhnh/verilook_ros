@@ -22,17 +22,21 @@ using Neurotec::NObject;
 using Neurotec::NAsyncOperation;
 using Neurotec::Images::HNImage;
 using Neurotec::Geometry::NRect;
+
 using Neurotec::Biometrics::NBiometricTask;
+using Neurotec::Biometrics::Client::NBiometricClient;
+using Neurotec::Biometrics::NSubject;
+
 using Neurotec::Biometrics::NBiometricOperations;
 using Neurotec::Biometrics::nboCreateTemplate;
 using Neurotec::Biometrics::nboEnroll;
 using Neurotec::Biometrics::nboEnrollWithDuplicateCheck;
 using Neurotec::Biometrics::nboIdentify;
 using Neurotec::Biometrics::nboClear;
-using Neurotec::Biometrics::Client::NBiometricClient;
+using Neurotec::Biometrics::nboNone;
 
 VerilookWrapper::VerilookWrapper(NBiometricClient & biometricClient)
-: m_biometricClient(biometricClient)
+: m_biometricClient(biometricClient), m_currentOperations(nboNone)
 {
     using Neurotec::Licensing::NLicense;
     m_isSegmentationActivated = NLicense::IsComponentActivated("Biometrics.FaceSegmentsDetection");
@@ -49,12 +53,17 @@ VerilookWrapper::~VerilookWrapper()
     }
 }
 
+void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
+{
+    m_currentOperations = nboEnrollWithDuplicateCheck;
+    createTemplate(getImage, obj);
+}
+
 void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
-    Neurotec::Biometrics::NSubject subject;
+    NSubject subject;
     //TODO: check type of HNImage himage, may need to be NImage
     setBiometricClientParams();
-    subject = Neurotec::Biometrics::NSubject();
     Neurotec::Biometrics::NFace face;
     Neurotec::Biometrics::HNImage himage;
 
@@ -68,14 +77,89 @@ void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognit
 
     subject.SetMultipleSubjects(true);
 
-    NBiometricTask task = m_biometricClient.CreateTask(nboEnrollWithDuplicateCheck, subject);
+    NBiometricTask task = m_biometricClient.CreateTask(nboCreateTemplate, subject);
 
     onAsyncOperationStarted(m_biometricClient.PerformTaskAsync(task));
 }
 
 void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTask)
 {
+    ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted");
 
+//    int facesCount;
+//    Neurotec::Biometrics::NBiometricStatus status;
+//    NSubject subject;
+//    NBiometricTask subTask = m_biometricClient.CreateTask(m_currentOperations, NULL);
+//
+//    subject = createTempalteTask.GetSubjects().Get(0);
+//    NSubject::RelatedSubjectCollection relatedSubjects = subject.GetRelatedSubjects();
+//    facesCount = 1 + relatedSubjects.GetCount();
+//
+//    status = subject.GetStatus();
+//    std::string id = subject.GetId();
+//    if (status == nbsOk && (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck))
+//    {
+//        NFace face = subject.GetFaces().Get(0);
+//        NLAttributes attributes = face.GetObjects().Get(0);
+//        NImage thumbnail = attributes.GetThumbnail();
+//
+//        if (id == wxEmptyString)
+//        {
+//            EnrollDlg dlg(this, wxEmptyString, thumbnail);
+//            if (dlg.ShowModal() == wxID_OK)
+//            {
+//                id = dlg.GetUserId();
+//                subject.SetId(id);
+//            }
+//            else
+//            {
+//                EnableControls();
+//                StartCreateTemplateFromCamera();
+//                return;
+//            }
+//        }
+//    }
+//
+//    AppendTextLine(wxString::Format(wxT("detected %d face(s) in '%s':"), facesCount, id.c_str()));
+//    for (int i = 0; i < facesCount; i++)
+//    {
+//        bool successful = false;
+//        if (i > 0) subject = relatedSubjects.Get(i - 1);
+//        status = subject.GetStatus();
+//        statusString = "Liveness check failed";
+//        if (status != nbsTimeout) statusString = NEnum::ToString(NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
+//        successful = status == nbsOk;
+//        AppendText(wxString::Format(wxT(" > create template %s, status = %s\n"), (successful ? "successful" : "failed"), statusString.c_str()));
+//        if (successful)
+//        {
+//            if (i > 0)
+//            {
+//                wxString relatedFaceId = wxString::Format(wxT("%s #%d"), id.c_str(), i + 1);
+//                subject.SetId(relatedFaceId);
+//            }
+//
+//            if (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck)
+//            {
+//                NFace face = subject.GetFaces().Get(0);
+//                NLAttributes attributes = face.GetObjects().Get(0);
+//                NImage thumbnail = attributes.GetThumbnail();
+//                if (thumbnail.GetHandle())
+//                {
+//                    NBuffer buffer = thumbnail.Save(NImageFormat::GetPng());
+//                    subject.SetProperty(wxT("Thumbnail"), buffer);
+//                }
+//            }
+//            subTask.GetSubjects().Add(subject);
+//        }
+//    }
+//    if (subTask.GetSubjects().GetCount() > 0)
+//        onAsyncOperationStarted(m_biometricClient.PerformTaskAsync(subTask));
+//    else
+//    {
+//        // Create template from camera failed, restart capture
+//        //createTemplate();
+//        ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted: no subject!");
+//    }
 }
 
 void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)

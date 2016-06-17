@@ -53,6 +53,7 @@ class VerilookWrapper {
 public:
     VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
     ~VerilookWrapper();
+    void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
 private:
     void onCreateTemplateCompleted(Neurotec::Biometrics::NBiometricTask createTempalteTask);
@@ -68,6 +69,7 @@ private:
     void setupBiometricClient();
 
     Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
+    Neurotec::Biometrics::NBiometricOperations m_currentOperations;
     std::vector<Neurotec::NAsyncOperation> m_asyncOperations;
     bool m_isSegmentationActivated;
 };
