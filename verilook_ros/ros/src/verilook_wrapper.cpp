@@ -8,6 +8,8 @@
 /* System */
 #include <string>
 
+#include <Collections/NCollections.hpp>
+
 /* Package */
 #include <verilook_wrapper.h>
 
@@ -86,39 +88,27 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
 {
     ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted");
 
-//    int facesCount;
-//    Neurotec::Biometrics::NBiometricStatus status;
-//    NSubject subject;
-//    NBiometricTask subTask = m_biometricClient.CreateTask(m_currentOperations, NULL);
-//
-//    subject = createTempalteTask.GetSubjects().Get(0);
-//    NSubject::RelatedSubjectCollection relatedSubjects = subject.GetRelatedSubjects();
-//    facesCount = 1 + relatedSubjects.GetCount();
-//
-//    status = subject.GetStatus();
-//    std::string id = subject.GetId();
-//    if (status == nbsOk && (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck))
-//    {
-//        NFace face = subject.GetFaces().Get(0);
-//        NLAttributes attributes = face.GetObjects().Get(0);
-//        NImage thumbnail = attributes.GetThumbnail();
-//
-//        if (id == wxEmptyString)
-//        {
-//            EnrollDlg dlg(this, wxEmptyString, thumbnail);
-//            if (dlg.ShowModal() == wxID_OK)
-//            {
-//                id = dlg.GetUserId();
-//                subject.SetId(id);
-//            }
-//            else
-//            {
-//                EnableControls();
-//                StartCreateTemplateFromCamera();
-//                return;
-//            }
-//        }
-//    }
+    int facesCount;
+    Neurotec::Biometrics::NBiometricStatus status;
+    NSubject subject;
+    NBiometricTask subTask = m_biometricClient.CreateTask(m_currentOperations, NULL);
+
+    subject = createTempalteTask.GetSubjects().Get(0);
+    NSubject::RelatedSubjectCollection relatedSubjects = subject.GetRelatedSubjects();
+    facesCount = 1 + relatedSubjects.GetCount();
+
+    status = subject.GetStatus();
+    std::string id = subject.GetId();
+    if (status == Neurotec::Biometrics::nbsOk && (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck))
+    {
+        Neurotec::Biometrics::NFace face = subject.GetFaces().Get(0);
+        Neurotec::Biometrics::NLAttributes attributes = face.GetObjects().Get(0);
+        Neurotec::Images::NImage thumbnail = attributes.GetThumbnail();
+
+        //TODO: set custome id here
+        id = "minh";
+        subject.SetId(id);
+    }
 //
 //    AppendTextLine(wxString::Format(wxT("detected %d face(s) in '%s':"), facesCount, id.c_str()));
 //    for (int i = 0; i < facesCount; i++)
