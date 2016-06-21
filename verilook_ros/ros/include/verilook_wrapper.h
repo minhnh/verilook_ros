@@ -53,10 +53,12 @@ class VerilookWrapper {
 public:
     VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
     ~VerilookWrapper();
-    void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
-    void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
+    void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj, std::string subjectID);
+    //TODO: check if this is needed
     void setSubjectID(std::string);
 private:
+    void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
+
     void onCreateTemplateCompleted(Neurotec::Biometrics::NBiometricTask createTempalteTask);
     void onEnrollCompleted(Neurotec::Biometrics::NBiometricTask enrollTask);
     void onIdentifyCompleted(Neurotec::Biometrics::NBiometricTask identifyTask);

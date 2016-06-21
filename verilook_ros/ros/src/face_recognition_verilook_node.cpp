@@ -126,8 +126,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
     // Invoke the main big "create template" or "enroll face" routine.
     NRect boundingRect;
     NResult result = Neurotec::N_OK;
-    m_verilookWrapper->setSubjectID("minh");
-    m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
+    m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this, "minh");
 
     // Fill the service response
     if (NFailed(result))
@@ -162,8 +161,7 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
         // Invoke the main big "create template" or "enroll face" routine.
         NRect boundingRect;
         NResult result = Neurotec::N_OK;
-        m_verilookWrapper->setSubjectID("minh");
-        m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
+        m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this, "minh");
         // Fill the service response
         if (NFailed(result))
         {

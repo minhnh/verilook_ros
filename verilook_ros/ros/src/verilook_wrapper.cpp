@@ -31,6 +31,8 @@ using Neurotec::Biometrics::Client::NBiometricClient;
 using Neurotec::Biometrics::NSubject;
 using Neurotec::Biometrics::NFace;
 using Neurotec::Biometrics::NLAttributes;
+using Neurotec::Biometrics::NBiometricStatus;
+using Neurotec::Biometrics::NBiometricTypes;
 
 using Neurotec::Biometrics::NBiometricOperations;
 using Neurotec::Biometrics::nboCreateTemplate;
@@ -39,6 +41,7 @@ using Neurotec::Biometrics::nboEnrollWithDuplicateCheck;
 using Neurotec::Biometrics::nboIdentify;
 using Neurotec::Biometrics::nboClear;
 using Neurotec::Biometrics::nboNone;
+using Neurotec::Biometrics::nbsOk;
 
 VerilookWrapper::VerilookWrapper(NBiometricClient & biometricClient)
 : m_biometricClient(biometricClient), m_currentOperations(nboNone)
@@ -58,9 +61,10 @@ VerilookWrapper::~VerilookWrapper()
     }
 }
 
-void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
+void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj, std::string subjectID)
 {
     m_currentOperations = nboEnrollWithDuplicateCheck;
+    m_subjectID = subjectID;
     createTemplate(getImage, obj);
 }
 
@@ -92,7 +96,7 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
     ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted");
 
     int facesCount;
-    Neurotec::Biometrics::NBiometricStatus status;
+    NBiometricStatus status;
     NSubject subject;
     std::string id, statusString;
     NBiometricTask subTask = m_biometricClient.CreateTask(m_currentOperations, NULL);
@@ -103,7 +107,7 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
 
     status = subject.GetStatus();
     id = subject.GetId();
-    if (status == Neurotec::Biometrics::nbsOk && (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck))
+    if (status == nbsOk && (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck))
     {
         NFace face = subject.GetFaces().Get(0);
         NLAttributes attributes = face.GetObjects().Get(0);
@@ -116,7 +120,6 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
 
     ROS_INFO("%s: detected %d face(s) in '%s':", PACKAGE_NAME, facesCount, id.c_str());
 
-    using Neurotec::Biometrics::NBiometricTypes;
     for (int i = 0; i < facesCount; i++)
     {
         bool successful = false;
@@ -127,7 +130,8 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
             statusString = Neurotec::NEnum::ToString(
                     NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
         successful = status == Neurotec::Biometrics::nbsOk;
-        ROS_INFO("%s: create template %s, status = %s", PACKAGE_NAME, (successful ? "successful" : "failed"), statusString.c_str());
+        ROS_INFO("%s: create template %s, status = %s", PACKAGE_NAME,
+                (successful ? "successful" : "failed"), statusString.c_str());
         if (successful)
         {
             if (i > 0)
@@ -167,7 +171,20 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
 void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
 {
     ROS_INFO_STREAM(PACKAGE_NAME << ": onEnrollCompleted");
-
+    bool successful = false;
+    NBiometricTask::SubjectCollection subjects = enrollTask.GetSubjects();
+    int count = subjects.GetCount();
+    for (int i = 0; i < count; i++)
+    {
+        NSubject subject = subjects.Get(i);
+        NBiometricStatus status = subject.GetStatus();
+        std::string statusString = Neurotec::NEnum::ToString(
+                NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
+        std::string id = subject.GetId();
+        successful = (status == nbsOk);
+        ROS_INFO("%s: enroll subject '%s' %s, status = %s", PACKAGE_NAME, id.c_str(),
+                (successful ? "successful" : "failed"), statusString.c_str());
+    }
 }
 
 void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
