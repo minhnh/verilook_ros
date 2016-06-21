@@ -76,10 +76,6 @@ private:
     std::string m_subjectID;
 };
 
-NResult enrollFaceFromImageFunction(std::string templateFileName, GetImageFunctionType getImage,
-                                    FaceRecognitionVerilookNode* obj,
-                                    Neurotec::Geometry::NRect *pBoundingRect,
-                                    Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
 void obtainVerilookLicenses();
 void releaseVerilookLicenses();
 NResult printErrorMsg(const std::string szErrorMessage, NResult result);
