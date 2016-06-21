@@ -24,7 +24,7 @@ using Neurotec::NObject;
 using Neurotec::NAsyncOperation;
 using Neurotec::Images::HNImage;
 using Neurotec::Images::NImage;
-using Neurotec::Geometry::NRect;
+using Neurotec::IO::NBuffer;
 
 using Neurotec::Biometrics::NBiometricTask;
 using Neurotec::Biometrics::Client::NBiometricClient;
@@ -109,6 +109,39 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
         id = subject.GetId();
         ROS_INFO("%s: identify subject '%s' completed, status = %s", PACKAGE_NAME,
                 id.c_str(), statusString.c_str());
+        if (status == nbsOk)
+        {
+            NSubject::MatchingResultCollection results = subject.GetMatchingResults();
+            int count = results.GetCount();
+            //ROS_INFO("%s: %d matching subject(s) found:", count);
+            ROS_INFO_STREAM(PACKAGE_NAME << ": " << count << "matching subjects found");
+            for (int j = 0; j < count; j++)
+            {
+                NImage thumbnail(NULL);
+                Neurotec::Biometrics::NMatchingResult result = results.Get(j);
+                int score = result.GetScore();
+                std::string matchedId = result.GetId();
+                ROS_INFO("%s: matched '%s' (score = %d)", PACKAGE_NAME, matchedId.c_str(), score);
+
+                NSubject target;
+                target.SetId(matchedId);
+                status = m_biometricClient.Get(target);
+                if (status != nbsOk)
+                {
+                    statusString = Neurotec::NEnum::ToString(
+                            NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
+                    ROS_WARN("%s: failed to retrieve subject '%s' from database, status = %s",
+                            PACKAGE_NAME, matchedId.c_str(), statusString.c_str());
+                }
+                else if (target.GetProperties().Contains("Thumbnail"))
+                {
+                    NBuffer buffer = target.GetProperty<NBuffer>("Thumbnail");
+                    if (buffer.GetHandle())
+                        thumbnail = NImage::FromMemory(
+                                buffer, Neurotec::Images::NImageFormat::GetPng());
+                }
+            }
+        }
     }
 }
 
@@ -193,8 +226,7 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
                 NImage thumbnail = attributes.GetThumbnail();
                 if (thumbnail.GetHandle())
                 {
-                    Neurotec::IO::NBuffer buffer = thumbnail.Save(
-                            Neurotec::Images::NImageFormat::GetPng());
+                    NBuffer buffer = thumbnail.Save(Neurotec::Images::NImageFormat::GetPng());
                     subject.SetProperty("Thumbnail", buffer);
                 }
             }
