@@ -70,7 +70,7 @@ void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVeril
 
 void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
 {
-    ROS_INFO_STREAM(PACKAGE_NAME << ": onEnrollCompleted");
+//    ROS_INFO_STREAM(PACKAGE_NAME << ": onEnrollCompleted");
     bool successful = false;
     NBiometricTask::SubjectCollection subjects = enrollTask.GetSubjects();
     int count = subjects.GetCount();
@@ -84,6 +84,31 @@ void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
         successful = (status == nbsOk);
         ROS_INFO("%s: enroll subject '%s' %s, status = %s", PACKAGE_NAME, id.c_str(),
                 (successful ? "successful" : "failed"), statusString.c_str());
+    }
+}
+
+void VerilookWrapper::identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
+{
+    m_currentOperations = nboIdentify;
+    createTemplate(getImage, obj);
+}
+
+void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
+{
+    ROS_INFO_STREAM(PACKAGE_NAME << ": onIdentifyCompleted");
+    NSubject subject;
+    NBiometricStatus status;
+    std::string statusString, id;
+
+    for (int i = 0; i < identifyTask.GetSubjects().GetCount(); i++)
+    {
+        subject = identifyTask.GetSubjects().Get(i);
+        status = subject.GetStatus();
+        statusString = Neurotec::NEnum::ToString(
+                NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
+        id = subject.GetId();
+        ROS_INFO("%s: identify subject '%s' completed, status = %s", PACKAGE_NAME,
+                id.c_str(), statusString.c_str());
     }
 }
 
@@ -112,7 +137,7 @@ void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognit
 
 void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTask)
 {
-    ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted");
+//    ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted");
 
     int facesCount;
     NBiometricStatus status;
@@ -185,12 +210,6 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
     {
         ROS_WARN_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted: no subject!");
     }
-}
-
-void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
-{
-    ROS_INFO_STREAM(PACKAGE_NAME << ": onIdentifyCompleted");
-
 }
 
 struct ObjectCompare : public std::unary_function<NObject, bool>

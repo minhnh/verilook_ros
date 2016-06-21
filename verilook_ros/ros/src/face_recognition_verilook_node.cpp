@@ -150,7 +150,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
 void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
 {
     ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
-    if (msg->data == "e_start")
+    if (msg->data == "e_enroll")
     {
         // Subscribe to the image stream
         ros::NodeHandle nh;
@@ -172,6 +172,17 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
         {
             ROS_INFO_STREAM(PACKAGE_NAME << ": X = " << boundingRect.X << ", Y = " << boundingRect.Y);
         }
+
+    }
+    else if (msg->data == "e_identify")
+    {
+        // Subscribe to the image stream
+        ros::NodeHandle nh;
+        image_transport::ImageTransport it(nh);
+        image_sub = it.subscribe(
+                "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
+
+        m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
 
     }
 }

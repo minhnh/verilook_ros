@@ -54,6 +54,7 @@ public:
     VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
     ~VerilookWrapper();
     void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj, std::string subjectID);
+    void identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     //TODO: check if this is needed
     void setSubjectID(std::string);
 private:
