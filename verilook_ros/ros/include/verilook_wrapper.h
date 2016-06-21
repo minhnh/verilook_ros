@@ -53,7 +53,7 @@ class VerilookWrapper {
 public:
     VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
     ~VerilookWrapper();
-    void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj, std::string subjectID);
+    void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     void identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     //TODO: check if this is needed
     void setSubjectID(std::string);
@@ -74,7 +74,10 @@ private:
 
     Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
     Neurotec::Biometrics::NBiometricOperations m_currentOperations;
+
+    std::vector<Neurotec::Geometry::NRect> m_currentBoundingRects;
     std::vector<Neurotec::NAsyncOperation> m_asyncOperations;
+
     bool m_isSegmentationActivated;
     std::string m_subjectID;
 };

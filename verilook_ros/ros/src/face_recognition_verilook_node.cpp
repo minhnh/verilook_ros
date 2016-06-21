@@ -38,7 +38,8 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 
     // event publisher and subscriber
     pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
-    sub_event_in_ = nh.subscribe("event_in", 1, &FaceRecognitionVerilookNode::eventInCallback, this);
+    m_sub_eventIn = nh.subscribe("event_in", 1, &FaceRecognitionVerilookNode::eventInCallback, this);
+    m_sub_subjectID = nh.subscribe("subject_id", 1, &FaceRecognitionVerilookNode::subjectIDCallback, this);
 
 }
 
@@ -126,7 +127,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
     // Invoke the main big "create template" or "enroll face" routine.
     NRect boundingRect;
     NResult result = Neurotec::N_OK;
-    m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this, "minh");
+    m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
 
     // Fill the service response
     if (NFailed(result))
@@ -149,7 +150,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
 
 void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
 {
-    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
+//    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
     if (msg->data == "e_enroll")
     {
         // Subscribe to the image stream
@@ -161,7 +162,7 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
         // Invoke the main big "create template" or "enroll face" routine.
         NRect boundingRect;
         NResult result = Neurotec::N_OK;
-        m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this, "minh");
+        m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
         // Fill the service response
         if (NFailed(result))
         {
@@ -184,6 +185,19 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
 
         m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
 
+    }
+}
+
+void FaceRecognitionVerilookNode::subjectIDCallback(const std_msgs::String::Ptr &msg)
+{
+    if (msg->data.empty())
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": received empty subject ID");
+    }
+    else
+    {
+        ROS_INFO_STREAM(PACKAGE_NAME << ": received subject ID: " << msg->data);
+        m_verilookWrapper->setSubjectID(msg->data);
     }
 }
 

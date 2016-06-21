@@ -61,10 +61,9 @@ VerilookWrapper::~VerilookWrapper()
     }
 }
 
-void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj, std::string subjectID)
+void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
     m_currentOperations = nboEnrollWithDuplicateCheck;
-    m_subjectID = subjectID;
     createTemplate(getImage, obj);
 }
 
@@ -73,6 +72,7 @@ void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
 //    ROS_INFO_STREAM(PACKAGE_NAME << ": onEnrollCompleted");
     bool successful = false;
     NBiometricTask::SubjectCollection subjects = enrollTask.GetSubjects();
+
     int count = subjects.GetCount();
     for (int i = 0; i < count; i++)
     {
@@ -85,6 +85,8 @@ void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
         ROS_INFO("%s: enroll subject '%s' %s, status = %s", PACKAGE_NAME, id.c_str(),
                 (successful ? "successful" : "failed"), statusString.c_str());
     }
+
+    m_currentOperations = nboNone;
 }
 
 void VerilookWrapper::identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
@@ -95,11 +97,10 @@ void VerilookWrapper::identify(GetImageFunctionType getImage, FaceRecognitionVer
 
 void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
 {
-    ROS_INFO_STREAM(PACKAGE_NAME << ": onIdentifyCompleted");
+//    ROS_INFO_STREAM(PACKAGE_NAME << ": onIdentifyCompleted");
     NSubject subject;
     NBiometricStatus status;
     std::string statusString, id;
-
     for (int i = 0; i < identifyTask.GetSubjects().GetCount(); i++)
     {
         subject = identifyTask.GetSubjects().Get(i);
@@ -143,6 +144,8 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
             }
         }
     }
+
+    m_currentOperations = nboNone;
 }
 
 void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
@@ -190,12 +193,17 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
         NLAttributes attributes = face.GetObjects().Get(0);
         NImage thumbnail = attributes.GetThumbnail();
 
-        //TODO: set custome id here
-        id = "minh";
-        subject.SetId(id);
+        if (id.empty())
+        {
+            //TODO: force enter subject ID?
+            ROS_ERROR_STREAM(PACKAGE_NAME << ": Empty subject ID");
+            return;
+        }
     }
 
     ROS_INFO("%s: detected %d face(s) in '%s':", PACKAGE_NAME, facesCount, id.c_str());
+
+    m_currentBoundingRects.clear();
 
     for (int i = 0; i < facesCount; i++)
     {
@@ -206,7 +214,7 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
         if (status != Neurotec::Biometrics::nbsTimeout)
             statusString = Neurotec::NEnum::ToString(
                     NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
-        successful = status == Neurotec::Biometrics::nbsOk;
+        successful = (status == Neurotec::Biometrics::nbsOk);
         ROS_INFO("%s: create template %s, status = %s", PACKAGE_NAME,
                 (successful ? "successful" : "failed"), statusString.c_str());
         if (successful)
@@ -219,10 +227,17 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
                 subject.SetId(relatedFaceId);
             }
 
+            NFace face = subject.GetFaces().Get(0);
+            NLAttributes attributes = face.GetObjects().Get(0);
+
+            Neurotec::Geometry::NRect boundingRect = attributes.GetBoundingRect();
+            ROS_INFO("%s: found face at (%d, %d), width = %d, height = %d",
+                    PACKAGE_NAME, boundingRect.X, boundingRect.Y,
+                    boundingRect.Width, boundingRect.Height);
+            m_currentBoundingRects.push_back(boundingRect);
+
             if (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck)
             {
-                NFace face = subject.GetFaces().Get(0);
-                NLAttributes attributes = face.GetObjects().Get(0);
                 NImage thumbnail = attributes.GetThumbnail();
                 if (thumbnail.GetHandle())
                 {
@@ -230,6 +245,8 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
                     subject.SetProperty("Thumbnail", buffer);
                 }
             }
+
+
             subTask.GetSubjects().Add(subject);
         }
     }
@@ -267,7 +284,7 @@ void VerilookWrapper::onAsyncOperationCompleted(NAsyncOperation operation)
 
 void VerilookWrapper::asyncOperationCompletedCallback(Neurotec::EventArgs args)
 {
-    ROS_INFO_STREAM(PACKAGE_NAME << ": in async operation callback");
+//    ROS_INFO_STREAM(PACKAGE_NAME << ": in async operation callback");
     VerilookWrapper * p_verilookWrapper = static_cast<VerilookWrapper*>(args.GetParam());
     NAsyncOperation operation(static_cast<HNObject>(args.GetObject<NAsyncOperation>().RefHandle()), true);
 

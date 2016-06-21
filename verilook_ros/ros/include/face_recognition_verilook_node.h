@@ -38,6 +38,7 @@ public:
 
 private:
     void eventInCallback(const std_msgs::String::Ptr &msg);
+    void subjectIDCallback(const std_msgs::String::Ptr &msg);
     bool condFulfilled();
     void imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg);
     bool createTemplateServiceCallback(CreateTemplate::Request& request, CreateTemplate::Response& response);
@@ -47,7 +48,8 @@ private:
     VerilookWrapper * m_verilookWrapper;
 
     ros::Publisher pub_event_out_;
-    ros::Subscriber sub_event_in_;
+    ros::Subscriber m_sub_eventIn;
+    ros::Subscriber m_sub_subjectID;
     image_transport::Subscriber image_sub;
 
     boost::mutex mtx;
