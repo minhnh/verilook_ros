@@ -68,6 +68,25 @@ void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVeril
     createTemplate(getImage, obj);
 }
 
+void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
+{
+    ROS_INFO_STREAM(PACKAGE_NAME << ": onEnrollCompleted");
+    bool successful = false;
+    NBiometricTask::SubjectCollection subjects = enrollTask.GetSubjects();
+    int count = subjects.GetCount();
+    for (int i = 0; i < count; i++)
+    {
+        NSubject subject = subjects.Get(i);
+        NBiometricStatus status = subject.GetStatus();
+        std::string statusString = Neurotec::NEnum::ToString(
+                NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
+        std::string id = subject.GetId();
+        successful = (status == nbsOk);
+        ROS_INFO("%s: enroll subject '%s' %s, status = %s", PACKAGE_NAME, id.c_str(),
+                (successful ? "successful" : "failed"), statusString.c_str());
+    }
+}
+
 void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
     NSubject subject;
@@ -165,25 +184,6 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
     else
     {
         ROS_WARN_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted: no subject!");
-    }
-}
-
-void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
-{
-    ROS_INFO_STREAM(PACKAGE_NAME << ": onEnrollCompleted");
-    bool successful = false;
-    NBiometricTask::SubjectCollection subjects = enrollTask.GetSubjects();
-    int count = subjects.GetCount();
-    for (int i = 0; i < count; i++)
-    {
-        NSubject subject = subjects.Get(i);
-        NBiometricStatus status = subject.GetStatus();
-        std::string statusString = Neurotec::NEnum::ToString(
-                NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
-        std::string id = subject.GetId();
-        successful = (status == nbsOk);
-        ROS_INFO("%s: enroll subject '%s' %s, status = %s", PACKAGE_NAME, id.c_str(),
-                (successful ? "successful" : "failed"), statusString.c_str());
     }
 }
 
