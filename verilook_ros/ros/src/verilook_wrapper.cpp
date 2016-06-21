@@ -23,11 +23,14 @@ using Neurotec::NErrorReport;
 using Neurotec::NObject;
 using Neurotec::NAsyncOperation;
 using Neurotec::Images::HNImage;
+using Neurotec::Images::NImage;
 using Neurotec::Geometry::NRect;
 
 using Neurotec::Biometrics::NBiometricTask;
 using Neurotec::Biometrics::Client::NBiometricClient;
 using Neurotec::Biometrics::NSubject;
+using Neurotec::Biometrics::NFace;
+using Neurotec::Biometrics::NLAttributes;
 
 using Neurotec::Biometrics::NBiometricOperations;
 using Neurotec::Biometrics::nboCreateTemplate;
@@ -66,16 +69,16 @@ void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognit
     NSubject subject;
     //TODO: check type of HNImage himage, may need to be NImage
     setBiometricClientParams();
-    Neurotec::Biometrics::NFace face;
+    NFace face;
     Neurotec::Biometrics::HNImage himage;
 
     (obj->getImage)(&himage);
 
-    face.SetImage(Neurotec::Images::NImage(himage, true));
+    face.SetImage(NImage(himage, true));
 
     subject.GetFaces().Add(face);
 
-    subject.SetId("minh");
+    subject.SetId(m_subjectID);
 
     subject.SetMultipleSubjects(true);
 
@@ -91,6 +94,7 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
     int facesCount;
     Neurotec::Biometrics::NBiometricStatus status;
     NSubject subject;
+    std::string id, statusString;
     NBiometricTask subTask = m_biometricClient.CreateTask(m_currentOperations, NULL);
 
     subject = createTempalteTask.GetSubjects().Get(0);
@@ -98,58 +102,66 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
     facesCount = 1 + relatedSubjects.GetCount();
 
     status = subject.GetStatus();
-    std::string id = subject.GetId();
+    id = subject.GetId();
     if (status == Neurotec::Biometrics::nbsOk && (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck))
     {
-        Neurotec::Biometrics::NFace face = subject.GetFaces().Get(0);
-        Neurotec::Biometrics::NLAttributes attributes = face.GetObjects().Get(0);
-        Neurotec::Images::NImage thumbnail = attributes.GetThumbnail();
+        NFace face = subject.GetFaces().Get(0);
+        NLAttributes attributes = face.GetObjects().Get(0);
+        NImage thumbnail = attributes.GetThumbnail();
 
         //TODO: set custome id here
         id = "minh";
         subject.SetId(id);
     }
-//
-//    AppendTextLine(wxString::Format(wxT("detected %d face(s) in '%s':"), facesCount, id.c_str()));
-//    for (int i = 0; i < facesCount; i++)
-//    {
-//        bool successful = false;
-//        if (i > 0) subject = relatedSubjects.Get(i - 1);
-//        status = subject.GetStatus();
-//        statusString = "Liveness check failed";
-//        if (status != nbsTimeout) statusString = NEnum::ToString(NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
-//        successful = status == nbsOk;
-//        AppendText(wxString::Format(wxT(" > create template %s, status = %s\n"), (successful ? "successful" : "failed"), statusString.c_str()));
-//        if (successful)
-//        {
-//            if (i > 0)
-//            {
-//                wxString relatedFaceId = wxString::Format(wxT("%s #%d"), id.c_str(), i + 1);
-//                subject.SetId(relatedFaceId);
-//            }
-//
-//            if (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck)
-//            {
-//                NFace face = subject.GetFaces().Get(0);
-//                NLAttributes attributes = face.GetObjects().Get(0);
-//                NImage thumbnail = attributes.GetThumbnail();
-//                if (thumbnail.GetHandle())
-//                {
-//                    NBuffer buffer = thumbnail.Save(NImageFormat::GetPng());
-//                    subject.SetProperty(wxT("Thumbnail"), buffer);
-//                }
-//            }
-//            subTask.GetSubjects().Add(subject);
-//        }
-//    }
-//    if (subTask.GetSubjects().GetCount() > 0)
-//        onAsyncOperationStarted(m_biometricClient.PerformTaskAsync(subTask));
-//    else
-//    {
-//        // Create template from camera failed, restart capture
-//        //createTemplate();
-//        ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted: no subject!");
-//    }
+
+    ROS_INFO("%s: detected %d face(s) in '%s':", PACKAGE_NAME, facesCount, id.c_str());
+
+    using Neurotec::Biometrics::NBiometricTypes;
+    for (int i = 0; i < facesCount; i++)
+    {
+        bool successful = false;
+        if (i > 0) subject = relatedSubjects.Get(i - 1);
+        status = subject.GetStatus();
+        statusString = "Liveness check failed";
+        if (status != Neurotec::Biometrics::nbsTimeout)
+            statusString = Neurotec::NEnum::ToString(
+                    NBiometricTypes::NBiometricStatusNativeTypeOf(), status);
+        successful = status == Neurotec::Biometrics::nbsOk;
+        ROS_INFO("%s: create template %s, status = %s", PACKAGE_NAME, (successful ? "successful" : "failed"), statusString.c_str());
+        if (successful)
+        {
+            if (i > 0)
+            {
+                char buff[100];
+                snprintf(buff, sizeof(buff), "%s #%d", id.c_str(), i + 1);
+                std::string relatedFaceId = buff;
+                subject.SetId(relatedFaceId);
+            }
+
+            if (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck)
+            {
+                NFace face = subject.GetFaces().Get(0);
+                NLAttributes attributes = face.GetObjects().Get(0);
+                NImage thumbnail = attributes.GetThumbnail();
+                if (thumbnail.GetHandle())
+                {
+                    Neurotec::IO::NBuffer buffer = thumbnail.Save(
+                            Neurotec::Images::NImageFormat::GetPng());
+                    subject.SetProperty("Thumbnail", buffer);
+                }
+            }
+            subTask.GetSubjects().Add(subject);
+        }
+    }
+
+    if (subTask.GetSubjects().GetCount() > 0)
+    {
+        onAsyncOperationStarted(m_biometricClient.PerformTaskAsync(subTask));
+    }
+    else
+    {
+        ROS_WARN_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted: no subject!");
+    }
 }
 
 void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
@@ -160,6 +172,7 @@ void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
 
 void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
 {
+    ROS_INFO_STREAM(PACKAGE_NAME << ": onIdentifyCompleted");
 
 }
 
@@ -228,6 +241,11 @@ void VerilookWrapper::asyncOperationCompletedCallback(Neurotec::EventArgs args)
     }
 }
 
+void VerilookWrapper::setSubjectID(std::string subjectID)
+{
+    m_subjectID = subjectID;
+}
+
 void VerilookWrapper::setBiometricClientParams()
 {
     // Can run GetFacesMaximalRoll and SetFacesMaximalYaw from biometric client here
@@ -245,8 +263,8 @@ void VerilookWrapper::setupBiometricClient()
     try
     {
         const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
-        m_biometricClient.SetDatabaseConnectionToSQLite(dbPath);
-        m_biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
+        //m_biometricClient.SetDatabaseConnectionToSQLite(dbPath);
+        //m_biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
 
         if (!NLicense::IsComponentActivated("Biometrics.FaceSegmentation"))
         {

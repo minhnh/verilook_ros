@@ -10,7 +10,7 @@
     <param name="io_method" value="mmap"/>
   </node>
 
-  <node pkg="verilook_ros" type="face_recognition_verilook_node" name="face_recognition_verilook_node" output="screen" launch-prefix="xterm -e gdb --args">
+  <node pkg="verilook_ros" type="face_recognition_verilook_node" name="face_recognition_verilook_node" output="screen"> <!-- launch-prefix="xterm -e gdb -args"-->
     <remap from="/face_recognition_verilook_node/event_out" to="remapped_output"/>
   </node>
 
