@@ -1,7 +1,5 @@
 /* Copyright 2016 Bonn-Rhein-Sieg University
  * Author: Minh Nguyen
- *
- * Based on port from https://github.com/hansonrobotics/ros_verilook
  */
 
 /* ROS */
@@ -133,7 +131,7 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
     {
         m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
     }
-    else if (msg->data == "e_saveFaces")
+    else if (msg->data == "e_showTemplate")
     {
         saveProcessedImage();
     }
@@ -245,7 +243,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
 
 int main(int argc, char * argv[])
 {
-    ros::init(argc, argv, "face_detection_verilook");
+    ros::init(argc, argv, "face_recognition_verilook");
 
     ros::NodeHandle nh("~");
 
