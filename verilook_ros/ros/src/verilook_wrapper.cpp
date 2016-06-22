@@ -164,14 +164,13 @@ void VerilookWrapper::createTemplate(GetImageFunctionType getImage, FaceRecognit
     Neurotec::Biometrics::HNImage himage;
 
     (obj->getImage)(&himage);
-
     face.SetImage(NImage(himage, true));
 
     subject.GetFaces().Add(face);
-
     subject.SetId(m_subjectID);
-
     subject.SetMultipleSubjects(true);
+
+    m_currentFaces.clear();
 
     NBiometricTask task = m_biometricClient.CreateTask(nboCreateTemplate, subject);
 
@@ -210,8 +209,6 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
 
     ROS_INFO("%s: detected %d face(s) in '%s':", PACKAGE_NAME, facesCount, id.c_str());
 
-    m_currentBoundingRects.clear();
-
     for (int i = 0; i < facesCount; i++)
     {
         bool successful = false;
@@ -226,22 +223,21 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
                 (successful ? "successful" : "failed"), statusString.c_str());
         if (successful)
         {
+            std::string relatedFaceId(id);
+
             if (i > 0)
             {
                 char buff[100];
                 snprintf(buff, sizeof(buff), "%s #%d", id.c_str(), i + 1);
-                std::string relatedFaceId = buff;
+                relatedFaceId = buff;
                 subject.SetId(relatedFaceId);
             }
 
             NFace face = subject.GetFaces().Get(0);
             NLAttributes attributes = face.GetObjects().Get(0);
 
-            Neurotec::Geometry::NRect boundingRect = attributes.GetBoundingRect();
-            ROS_INFO("%s: found face at (%d, %d), width = %d, height = %d",
-                    PACKAGE_NAME, boundingRect.X, boundingRect.Y,
-                    boundingRect.Width, boundingRect.Height);
-            m_currentBoundingRects.push_back(boundingRect);
+            VerilookFace verilookFace(relatedFaceId, attributes);
+            m_currentFaces.push_back(verilookFace);
 
             if (m_currentOperations == nboEnroll || m_currentOperations == nboEnrollWithDuplicateCheck)
             {
@@ -341,9 +337,15 @@ void VerilookWrapper::setSubjectID(std::string subjectID)
     m_subjectID = subjectID;
 }
 
+std::vector<VerilookFace> VerilookWrapper::getCurrentFaces()
+{
+    return m_currentFaces;
+}
+
 void VerilookWrapper::setBiometricClientParams()
 {
     // Can run GetFacesMaximalRoll and SetFacesMaximalYaw from biometric client here
+//    m_isSegmentationActivated = true;
     m_biometricClient.SetFacesDetectAllFeaturePoints(m_isSegmentationActivated);
     m_biometricClient.SetFacesDetectBaseFeaturePoints(m_isSegmentationActivated);
     m_biometricClient.SetFacesDetermineGender(m_isSegmentationActivated);
@@ -358,8 +360,8 @@ void VerilookWrapper::setupBiometricClient()
     try
     {
         const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
-        //m_biometricClient.SetDatabaseConnectionToSQLite(dbPath);
-        //m_biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
+        m_biometricClient.SetDatabaseConnectionToSQLite(dbPath);
+        m_biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
 
         if (!NLicense::IsComponentActivated("Biometrics.FaceSegmentation"))
         {

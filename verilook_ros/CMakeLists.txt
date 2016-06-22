@@ -7,6 +7,7 @@ set(NODE_EXEC_FACE_RECOGNITION face_recognition_verilook_node)
 
 ## Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
+    cv_bridge
     roscpp
     nodelet
     sensor_msgs
@@ -16,6 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
     image_transport
     ${catkin_BUILD_PACKAGES}
 )
+
+find_package(OpenCV REQUIRED)
 
 ## Additional header files
 include_directories(

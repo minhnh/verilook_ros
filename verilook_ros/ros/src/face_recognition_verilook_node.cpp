@@ -8,15 +8,18 @@
 
 /* Package */
 #include "face_recognition_verilook_node.h"
+#include <opencv/cv.h>
+#include <cv_bridge/cv_bridge.h>
 
 namespace verilook_ros
 {
 
 using Neurotec::Images::HNImage;
 using Neurotec::Geometry::NRect;
+using Neurotec::Biometrics::NBiometricTypes;
 
 FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
-: m_verilookWrapper(NULL)
+: m_verilookWrapper(NULL), m_imageTransport(nh)
 {
     try
     {
@@ -36,10 +39,11 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 //    ros::ServiceServer service = nh.advertiseService(
 //            "create_face_template", &FaceDetectionVerilookNode::createTemplateServiceCallback, this);
 
-    // event publisher and subscriber
-    pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
+    m_imagePub = m_imageTransport.advertise("processed_image", 1);
     m_sub_eventIn = nh.subscribe("event_in", 1, &FaceRecognitionVerilookNode::eventInCallback, this);
     m_sub_subjectID = nh.subscribe("subject_id", 1, &FaceRecognitionVerilookNode::subjectIDCallback, this);
+
+    pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
 
 }
 
@@ -56,7 +60,6 @@ FaceRecognitionVerilookNode::~FaceRecognitionVerilookNode()
     delete m_verilookWrapper;
 }
 
-// Put incoming sensor_msgs/Image messages to a buffer
 void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image::ConstPtr& p_image)
 {
     using Neurotec::Images::NImageCreateFromDataEx;
@@ -86,15 +89,9 @@ void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image:
     cond.notify_one();
 
     // Shutdown the image stream to save CPU usage
-    image_sub.shutdown();
+    m_imageSub.shutdown();
 }
 
-bool FaceRecognitionVerilookNode::condFulfilled()
-{
-    return image_buffer != NULL;
-}
-
-// Callback, from which EnrollFaceFromImageFunction gets its images.
 void FaceRecognitionVerilookNode::getImage(HNImage *phImage)
 {
     boost::unique_lock<boost::mutex> lock(mtx);
@@ -107,6 +104,101 @@ void FaceRecognitionVerilookNode::getImage(HNImage *phImage)
     else
     {
         ROS_ERROR_STREAM(PACKAGE_NAME << "Timed out while waiting on ROS image stream.");
+    }
+}
+
+bool FaceRecognitionVerilookNode::condFulfilled()
+{
+    return image_buffer != NULL;
+}
+
+void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
+{
+//    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
+    // Subscribe to the image stream
+    ros::NodeHandle nh;
+    image_transport::ImageTransport it(nh);
+    m_imageSub = it.subscribe(
+            "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
+
+    if (msg->data == "e_enroll")
+    {
+        m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
+    }
+    else if (msg->data == "e_identify")
+    {
+        m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
+    }
+    else if (msg->data == "e_createTemplate")
+    {
+        m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
+    }
+    else if (msg->data == "e_saveFaces")
+    {
+        saveProcessedImage();
+    }
+}
+
+void FaceRecognitionVerilookNode::saveProcessedImage()
+{
+    cv_bridge::CvImagePtr cv_image;
+    try
+    {
+        cv_image = cv_bridge::toCvCopy(mp_image, sensor_msgs::image_encodings::BGR8);
+    }
+    catch (cv_bridge::Exception &ex)
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": Failed to convert image");
+        return;
+    }
+
+    std::vector<VerilookFace> faces = m_verilookWrapper->getCurrentFaces();
+    if (faces.size() <= 0)
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": no face recorded");
+        return;
+    }
+
+    for(std::vector<VerilookFace>::iterator p_face = faces.begin(); p_face != faces.end(); ++p_face) {
+        Neurotec::Geometry::NRect boundingRect = p_face->m_attributes.GetBoundingRect();
+//        ROS_INFO("%s: found face at (%d, %d), width = %d, height = %d",
+//                PACKAGE_NAME, boundingRect.X, boundingRect.Y,
+//                boundingRect.Width, boundingRect.Height);
+
+        std::stringstream info;
+        info << "ID: " << p_face->m_id;
+//        info << ", gender: " << std::string(Neurotec::NEnum::ToString(
+//                NBiometricTypes::NGenderNativeTypeOf(), p_face->m_attributes.GetGender()));
+//        info << ", expression: " << std::string(Neurotec::NEnum::ToString(
+//                NBiometricTypes::NLExpressionNativeTypeOf(), p_face->m_attributes.GetExpression()));
+
+        cv::Point2f pointTopLeft(boundingRect.X, boundingRect.Y);
+        cv::Point2f pointBottomRight(boundingRect.X + boundingRect.Width, boundingRect.Y + boundingRect.Height);
+
+        cv::RNG rng(12345);
+        cv::Scalar colour(rng.uniform(125, 255), rng.uniform(125, 255), rng.uniform(125, 255));
+        cv::Scalar colourDark(rng.uniform(0, 125), rng.uniform(0, 125), rng.uniform(0, 125));
+
+        cv::rectangle(cv_image->image, pointTopLeft, pointBottomRight, colour, 2, 8, 0);
+
+        cv::Point2f pointText(boundingRect.X, boundingRect.Y - 5);
+        cv::putText(cv_image->image, info.str().c_str(), pointText,
+                    cv::FONT_HERSHEY_COMPLEX_SMALL, 0.6, colourDark, 1, CV_AA);
+    }
+
+    m_imagePub.publish(cv_image->toImageMsg());
+}
+
+void FaceRecognitionVerilookNode::subjectIDCallback(const std_msgs::String::Ptr &msg)
+{
+    if (msg->data.empty())
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": received empty subject ID");
+    }
+    else
+    {
+        ROS_INFO_STREAM(PACKAGE_NAME << ": received subject ID: " << msg->data);
+        m_verilookWrapper->setSubjectID(msg->data);
     }
 }
 
@@ -147,55 +239,6 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
     // Shutdown the image stream to save CPU usage
     sub.shutdown();
     return true;
-}
-
-void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
-{
-//    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
-    // Subscribe to the image stream
-    ros::NodeHandle nh;
-    image_transport::ImageTransport it(nh);
-    image_sub = it.subscribe(
-            "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
-
-    if (msg->data == "e_enroll")
-    {
-        // Invoke the main big "create template" or "enroll face" routine.
-        NRect boundingRect;
-        NResult result = Neurotec::N_OK;
-        m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
-        // Fill the service response
-        if (NFailed(result))
-        {
-            //response.success = false;
-            ROS_ERROR_STREAM(PACKAGE_NAME << ": enroll failed");
-        }
-        else
-        {
-            ROS_INFO_STREAM(PACKAGE_NAME << ": X = " << boundingRect.X << ", Y = " << boundingRect.Y);
-        }
-    }
-    else if (msg->data == "e_identify")
-    {
-        m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
-    }
-    else if (msg->data == "e_saveTemplate")
-    {
-        m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
-    }
-}
-
-void FaceRecognitionVerilookNode::subjectIDCallback(const std_msgs::String::Ptr &msg)
-{
-    if (msg->data.empty())
-    {
-        ROS_ERROR_STREAM(PACKAGE_NAME << ": received empty subject ID");
-    }
-    else
-    {
-        ROS_INFO_STREAM(PACKAGE_NAME << ": received subject ID: " << msg->data);
-        m_verilookWrapper->setSubjectID(msg->data);
-    }
 }
 
 }   // namespace verilook_ros

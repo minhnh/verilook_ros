@@ -37,10 +37,13 @@ public:
     void getImage(Neurotec::Images::HNImage *phImage);
 
 private:
-    void eventInCallback(const std_msgs::String::Ptr &msg);
-    void subjectIDCallback(const std_msgs::String::Ptr &msg);
-    bool condFulfilled();
     void imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg);
+    bool condFulfilled();
+
+    void eventInCallback(const std_msgs::String::Ptr &msg);
+    void saveProcessedImage();
+
+    void subjectIDCallback(const std_msgs::String::Ptr &msg);
     bool createTemplateServiceCallback(CreateTemplate::Request& request, CreateTemplate::Response& response);
 
     Neurotec::Images::HNImage image_buffer = NULL;
@@ -50,7 +53,9 @@ private:
     ros::Publisher pub_event_out_;
     ros::Subscriber m_sub_eventIn;
     ros::Subscriber m_sub_subjectID;
-    image_transport::Subscriber image_sub;
+    image_transport::ImageTransport m_imageTransport;
+    image_transport::Subscriber m_imageSub;
+    image_transport::Publisher m_imagePub;
     sensor_msgs::ImageConstPtr mp_image;
 
     boost::mutex mtx;

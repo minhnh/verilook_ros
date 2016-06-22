@@ -49,7 +49,16 @@ using Neurotec::NFalse;
 
 typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(Neurotec::Images::HNImage*);
 
-class VerilookWrapper {
+struct VerilookFace
+{
+    VerilookFace(std::string id, Neurotec::Biometrics::NLAttributes attributes)
+        : m_id(id), m_attributes(attributes) {}
+    std::string m_id;
+    Neurotec::Biometrics::NLAttributes m_attributes;
+};
+
+class VerilookWrapper
+{
 public:
     VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
     ~VerilookWrapper();
@@ -58,6 +67,7 @@ public:
     void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     //TODO: check if this is needed
     void setSubjectID(std::string);
+    std::vector<VerilookFace> getCurrentFaces();
 private:
     void onCreateTemplateCompleted(Neurotec::Biometrics::NBiometricTask createTempalteTask);
     void onEnrollCompleted(Neurotec::Biometrics::NBiometricTask enrollTask);
@@ -74,7 +84,7 @@ private:
     Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
     Neurotec::Biometrics::NBiometricOperations m_currentOperations;
 
-    std::vector<Neurotec::Geometry::NRect> m_currentBoundingRects;
+    std::vector<VerilookFace> m_currentFaces;
     std::vector<Neurotec::NAsyncOperation> m_asyncOperations;
 
     bool m_isSegmentationActivated;
