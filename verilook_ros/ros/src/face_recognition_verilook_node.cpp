@@ -57,19 +57,19 @@ FaceRecognitionVerilookNode::~FaceRecognitionVerilookNode()
 }
 
 // Put incoming sensor_msgs/Image messages to a buffer
-void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg)
+void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image::ConstPtr& p_image)
 {
     using Neurotec::Images::NImageCreateFromDataEx;
     using Neurotec::Images::NPF_RGB_8U;
 
     boost::lock_guard<boost::mutex> lock(mtx);
 
-    ROS_INFO_STREAM(PACKAGE_NAME << ": image message callback");
+//    ROS_INFO_STREAM(PACKAGE_NAME << ": image message callback");
     // Create the Image object
     HNImage newImage = NULL;
-    NResult result = NImageCreateFromDataEx(NPF_RGB_8U.GetValue(), msg->width, msg->height,
-                                            msg->step, msg->step, &msg->data[0],
-                                            msg->height*msg->step, 0, &newImage);
+    NResult result = NImageCreateFromDataEx(NPF_RGB_8U.GetValue(), p_image->width, p_image->height,
+                                            p_image->step, p_image->step, &p_image->data[0],
+                                            p_image->height*p_image->step, 0, &newImage);
     if (NFailed(result))
     {
         result = printErrorMsgWithLastError("NImageCreateWrapperEx() failed, result = %d\n", result);
@@ -80,6 +80,7 @@ void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image:
         NObjectSet(NULL, (HNObject*) &image_buffer);
         // Place the new image for grabs by the getImage function
         image_buffer = newImage;
+        mp_image = p_image;
     }
 
     cond.notify_one();
@@ -151,14 +152,14 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
 void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
 {
 //    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
+    // Subscribe to the image stream
+    ros::NodeHandle nh;
+    image_transport::ImageTransport it(nh);
+    image_sub = it.subscribe(
+            "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
+
     if (msg->data == "e_enroll")
     {
-        // Subscribe to the image stream
-        ros::NodeHandle nh;
-        image_transport::ImageTransport it(nh);
-        image_sub = it.subscribe(
-                "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
-
         // Invoke the main big "create template" or "enroll face" routine.
         NRect boundingRect;
         NResult result = Neurotec::N_OK;
@@ -173,18 +174,14 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
         {
             ROS_INFO_STREAM(PACKAGE_NAME << ": X = " << boundingRect.X << ", Y = " << boundingRect.Y);
         }
-
     }
     else if (msg->data == "e_identify")
     {
-        // Subscribe to the image stream
-        ros::NodeHandle nh;
-        image_transport::ImageTransport it(nh);
-        image_sub = it.subscribe(
-                "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
-
         m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
-
+    }
+    else if (msg->data == "e_saveTemplate")
+    {
+        m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
     }
 }
 

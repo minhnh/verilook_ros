@@ -51,6 +51,7 @@ private:
     ros::Subscriber m_sub_eventIn;
     ros::Subscriber m_sub_subjectID;
     image_transport::Subscriber image_sub;
+    sensor_msgs::ImageConstPtr mp_image;
 
     boost::mutex mtx;
     boost::condition_variable cond;

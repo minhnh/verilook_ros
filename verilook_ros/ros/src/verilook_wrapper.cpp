@@ -63,7 +63,13 @@ VerilookWrapper::~VerilookWrapper()
 
 void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
-    m_currentOperations = nboEnrollWithDuplicateCheck;
+    m_currentOperations = nboEnroll;
+    if (m_subjectID.empty())
+    {
+        //TODO: force enter subject ID?
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": Empty subject ID");
+        return;
+    }
     createTemplate(getImage, obj);
 }
 
@@ -87,6 +93,7 @@ void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
     }
 
     m_currentOperations = nboNone;
+    m_subjectID.clear();
 }
 
 void VerilookWrapper::identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
@@ -115,7 +122,7 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
             NSubject::MatchingResultCollection results = subject.GetMatchingResults();
             int count = results.GetCount();
             //ROS_INFO("%s: %d matching subject(s) found:", count);
-            ROS_INFO_STREAM(PACKAGE_NAME << ": " << count << "matching subjects found");
+            ROS_INFO_STREAM(PACKAGE_NAME << ": " << count << " matching subjects found");
             for (int j = 0; j < count; j++)
             {
                 NImage thumbnail(NULL);
@@ -196,8 +203,8 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
         if (id.empty())
         {
             //TODO: force enter subject ID?
-            ROS_ERROR_STREAM(PACKAGE_NAME << ": Empty subject ID");
-            return;
+//            ROS_WARN_STREAM(PACKAGE_NAME << ": Empty subject ID");
+//            return;
         }
     }
 
@@ -246,12 +253,15 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
                 }
             }
 
-
             subTask.GetSubjects().Add(subject);
         }
     }
 
-    if (subTask.GetSubjects().GetCount() > 0)
+    if (m_currentOperations == nboNone)
+    {
+        return;
+    }
+    else if (subTask.GetSubjects().GetCount() > 0)
     {
         onAsyncOperationStarted(m_biometricClient.PerformTaskAsync(subTask));
     }
