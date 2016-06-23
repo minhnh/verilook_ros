@@ -11,6 +11,8 @@
   </node>
 
   <node pkg="verilook_ros" type="face_recognition_verilook_node" name="face_recognition_verilook_node" output="screen"> <!-- launch-prefix="xterm -e gdb -args"-->
+    <param name="enable_database" value="true" type="bool"/>
+    <param name="database_path" value="faces.db" type="str"/>
     <remap from="/face_recognition_verilook_node/event_out" to="remapped_output"/>
   </node>
 
