@@ -176,7 +176,7 @@ void FaceRecognitionVerilookNode::showProcessedImage()
 //                boundingRect.Width, boundingRect.Height);
 
         std::stringstream info;
-        info << "ID: " << p_face->m_id;
+        info << p_face->m_id;
 //        info << ", gender: " << std::string(Neurotec::NEnum::ToString(
 //                NBiometricTypes::NGenderNativeTypeOf(), p_face->m_attributes.GetGender()));
 //        info << ", expression: " << std::string(Neurotec::NEnum::ToString(
@@ -189,11 +189,16 @@ void FaceRecognitionVerilookNode::showProcessedImage()
         cv::Scalar colour(rng.uniform(125, 255), rng.uniform(125, 255), rng.uniform(125, 255));
         cv::Scalar colourDark(rng.uniform(0, 125), rng.uniform(0, 125), rng.uniform(0, 125));
 
-        cv::rectangle(cv_image->image, pointTopLeft, pointBottomRight, colour, 2, 8, 0);
-
-        cv::Point2f pointText(boundingRect.X, boundingRect.Y - 5);
+        cv::Point pointText(boundingRect.X, boundingRect.Y - 5);
+        int baseLine = 0;
+        cv::Size text = cv::getTextSize(info.str().c_str(), cv::FONT_HERSHEY_PLAIN, 5.0, 2, &baseLine);
+        cv::rectangle(cv_image->image, pointText + cv::Point(0, baseLine - 10),
+                pointText + cv::Point(text.width, - text.height - 20), CV_RGB(0, 0, 0),
+                CV_FILLED);
         cv::putText(cv_image->image, info.str().c_str(), pointText,
-                    cv::FONT_HERSHEY_COMPLEX_SMALL, 0.6, colourDark, 1, CV_AA);
+                    cv::FONT_HERSHEY_PLAIN, 5.0, colour, 2, CV_AA);
+
+        cv::rectangle(cv_image->image, pointTopLeft, pointBottomRight, colour, 2, 8, 0);
     }
 
     m_imagePub.publish(cv_image->toImageMsg());

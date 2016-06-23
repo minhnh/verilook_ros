@@ -65,7 +65,8 @@ public:
     ~VerilookWrapper();
     void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     void identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
-    void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
+    void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj,
+            Neurotec::Biometrics::NBiometricOperations nextOperation=Neurotec::Biometrics::nboNone);
     //TODO: check if this is needed
     void setSubjectID(std::string);
     std::vector<VerilookFace> getCurrentFaces();
