@@ -30,7 +30,7 @@ public:
 private:
     virtual void onInit()
     {
-        node_handle_ = getMTNodeHandle();
+        node_handle_ = getMTPrivateNodeHandle();
         face_recognition_node_ = new verilook_ros::FaceRecognitionVerilookNode(node_handle_);
     }
 

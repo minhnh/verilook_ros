@@ -43,8 +43,10 @@ using Neurotec::Biometrics::nboClear;
 using Neurotec::Biometrics::nboNone;
 using Neurotec::Biometrics::nbsOk;
 
-VerilookWrapper::VerilookWrapper(NBiometricClient & biometricClient)
-: m_biometricClient(biometricClient), m_currentOperations(nboNone)
+VerilookWrapper::VerilookWrapper(NBiometricClient & biometricClient,
+        bool enableDatabase, std::string databasePath)
+: m_biometricClient(biometricClient), m_currentOperations(nboNone),
+  m_enableDatabase(enableDatabase), m_databasePath(databasePath)
 {
     using Neurotec::Licensing::NLicense;
     m_isSegmentationActivated = NLicense::IsComponentActivated("Biometrics.FaceSegmentsDetection");
@@ -359,9 +361,12 @@ void VerilookWrapper::setupBiometricClient()
 {
     try
     {
-        const std::string dbPath = "/home/minh/.ros/data/verilook_ros/faces.db";
-        m_biometricClient.SetDatabaseConnectionToSQLite(dbPath);
-        m_biometricClient.SetCustomDataSchema(Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
+        if (m_enableDatabase)
+        {
+            m_biometricClient.SetDatabaseConnectionToSQLite(m_databasePath);
+            m_biometricClient.SetCustomDataSchema(
+                    Neurotec::Biometrics::NBiographicDataSchema::Parse("(Thumbnail blob)"));
+        }
 
         if (!NLicense::IsComponentActivated("Biometrics.FaceSegmentation"))
         {

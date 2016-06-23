@@ -60,7 +60,8 @@ struct VerilookFace
 class VerilookWrapper
 {
 public:
-    VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient);
+    VerilookWrapper(Neurotec::Biometrics::Client::NBiometricClient & biometricClient,
+            bool enableDatabase, std::string databasePath);
     ~VerilookWrapper();
     void enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     void identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
@@ -89,6 +90,8 @@ private:
 
     bool m_isSegmentationActivated;
     std::string m_subjectID;
+    const bool m_enableDatabase;
+    const std::string m_databasePath;
 };
 
 void obtainVerilookLicenses();

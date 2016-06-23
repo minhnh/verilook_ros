@@ -16,13 +16,17 @@ using Neurotec::Images::HNImage;
 using Neurotec::Geometry::NRect;
 using Neurotec::Biometrics::NBiometricTypes;
 
-FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
-: m_verilookWrapper(NULL), m_imageTransport(nh)
+FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle &nh)
+: m_nodeHandle(nh), m_verilookWrapper(NULL), m_imageTransport(nh)
 {
-    bool enableDatabase = nh.param("enable_database", false);
+    bool enableDatabase;
     std::string databasePath;
+    m_nodeHandle.param<bool>("enable_database", enableDatabase, false);
     if (enableDatabase)
-        databasePath = nh.param("database_path", "data/verilook_ros/faces.db");
+    {
+        m_nodeHandle.param<std::string>("database_path", databasePath, "data/verilook_ros/faces.db");
+        ROS_INFO_STREAM(PACKAGE_NAME << ": saving templates to database at " << databasePath);
+    }
 
     try
     {
@@ -30,7 +34,7 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 
         obtainVerilookLicenses();
 
-        m_verilookWrapper = new VerilookWrapper(m_biometricClient);
+        m_verilookWrapper = new VerilookWrapper(m_biometricClient, enableDatabase, databasePath);
 
     }
     catch (Neurotec::NError & e)
@@ -39,14 +43,14 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
     }
 
     // Start camera service
-//    ros::ServiceServer service = nh.advertiseService(
+//    ros::ServiceServer service = m_nodeHandle.advertiseService(
 //            "create_face_template", &FaceDetectionVerilookNode::createTemplateServiceCallback, this);
 
     m_imagePub = m_imageTransport.advertise("processed_image", 1);
-    m_sub_eventIn = nh.subscribe("event_in", 1, &FaceRecognitionVerilookNode::eventInCallback, this);
-    m_sub_subjectID = nh.subscribe("subject_id", 1, &FaceRecognitionVerilookNode::subjectIDCallback, this);
+    m_sub_eventIn = m_nodeHandle.subscribe("event_in", 1, &FaceRecognitionVerilookNode::eventInCallback, this);
+    m_sub_subjectID = m_nodeHandle.subscribe("subject_id", 1, &FaceRecognitionVerilookNode::subjectIDCallback, this);
 
-    pub_event_out_ = nh.advertise<std_msgs::String>("event_out", 1);
+    pub_event_out_ = m_nodeHandle.advertise<std_msgs::String>("event_out", 1);
 
 }
 
@@ -119,8 +123,7 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
 {
 //    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
     // Subscribe to the image stream
-    ros::NodeHandle nh;
-    image_transport::ImageTransport it(nh);
+    image_transport::ImageTransport it(m_nodeHandle);
 
     if (msg->data == "e_enroll")
     {
@@ -148,6 +151,13 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
 
 void FaceRecognitionVerilookNode::showProcessedImage()
 {
+    std::vector<VerilookFace> faces = m_verilookWrapper->getCurrentFaces();
+    if (faces.size() <= 0)
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": no face recorded");
+        return;
+    }
+
     cv_bridge::CvImagePtr cv_image;
     try
     {
@@ -156,13 +166,6 @@ void FaceRecognitionVerilookNode::showProcessedImage()
     catch (cv_bridge::Exception &ex)
     {
         ROS_ERROR_STREAM(PACKAGE_NAME << ": Failed to convert image");
-        return;
-    }
-
-    std::vector<VerilookFace> faces = m_verilookWrapper->getCurrentFaces();
-    if (faces.size() <= 0)
-    {
-        ROS_ERROR_STREAM(PACKAGE_NAME << ": no face recorded");
         return;
     }
 
@@ -219,8 +222,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
     NObjectSet(NULL, (HNObject*) &image_buffer);
 
     // Subscribe to the image stream
-    ros::NodeHandle nh;
-    image_transport::ImageTransport it(nh);
+    image_transport::ImageTransport it(m_nodeHandle);
     image_transport::Subscriber sub = it.subscribe(
             "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
 

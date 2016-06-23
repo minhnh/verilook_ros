@@ -32,7 +32,7 @@ class VerilookWrapper;
 class FaceRecognitionVerilookNode
 {
 public:
-    FaceRecognitionVerilookNode(ros::NodeHandle nh);
+    FaceRecognitionVerilookNode(ros::NodeHandle &nh);
     ~FaceRecognitionVerilookNode();
     void getImage(Neurotec::Images::HNImage *phImage);
 
@@ -50,6 +50,7 @@ private:
     Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
     VerilookWrapper * m_verilookWrapper;
 
+    ros::NodeHandle m_nodeHandle;
     ros::Publisher pub_event_out_;
     ros::Subscriber m_sub_eventIn;
     ros::Subscriber m_sub_subjectID;
