@@ -41,7 +41,7 @@ private:
     bool condFulfilled();
 
     void eventInCallback(const std_msgs::String::Ptr &msg);
-    void saveProcessedImage();
+    void showProcessedImage();
 
     void subjectIDCallback(const std_msgs::String::Ptr &msg);
     bool createTemplateServiceCallback(CreateTemplate::Request& request, CreateTemplate::Response& response);

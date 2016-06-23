@@ -19,6 +19,11 @@ using Neurotec::Biometrics::NBiometricTypes;
 FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle nh)
 : m_verilookWrapper(NULL), m_imageTransport(nh)
 {
+    bool enableDatabase = nh.param("enable_database", false);
+    std::string databasePath;
+    if (enableDatabase)
+        databasePath = nh.param("database_path", "data/verilook_ros/faces.db");
+
     try
     {
         NCore::OnStart();
@@ -116,28 +121,32 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
     // Subscribe to the image stream
     ros::NodeHandle nh;
     image_transport::ImageTransport it(nh);
-    m_imageSub = it.subscribe(
-            "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
 
     if (msg->data == "e_enroll")
     {
+        m_imageSub = it.subscribe(
+                "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
         m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
     }
     else if (msg->data == "e_identify")
     {
+        m_imageSub = it.subscribe(
+                "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
         m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
     }
     else if (msg->data == "e_createTemplate")
     {
+        m_imageSub = it.subscribe(
+                "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
         m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
     }
     else if (msg->data == "e_showTemplate")
     {
-        saveProcessedImage();
+        showProcessedImage();
     }
 }
 
-void FaceRecognitionVerilookNode::saveProcessedImage()
+void FaceRecognitionVerilookNode::showProcessedImage()
 {
     cv_bridge::CvImagePtr cv_image;
     try

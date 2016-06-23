@@ -63,13 +63,13 @@ VerilookWrapper::~VerilookWrapper()
 
 void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
-    m_currentOperations = nboEnroll;
     if (m_subjectID.empty())
     {
         //TODO: force enter subject ID?
         ROS_ERROR_STREAM(PACKAGE_NAME << ": Empty subject ID");
         return;
     }
+    m_currentOperations = nboEnroll;
     createTemplate(getImage, obj);
 }
 
