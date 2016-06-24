@@ -39,6 +39,15 @@ class FaceRecognitionVerilookNode;
 #define LICENSE_SERVER  "/local"
 #define LICENSE_PORT    "5000"
 
+#define DEFAULT_CLIENT_PROPERTIES \
+    "Faces.CreateThumbnailImage=True;"\
+    "Faces.DetectAllFeaturePoints=True;"\
+    "Faces.DetermineGender=True;"\
+    "Faces.DetermineAge=True;"\
+    "Faces.DetectProperties=True;"\
+    "Faces.RecognizeExpression=True;"\
+    "Faces.RecognizeEmotion=True;"
+
 using Neurotec::NCore;
 using Neurotec::NResult;
 using Neurotec::NFailed;
@@ -67,7 +76,6 @@ public:
     void identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj);
     void createTemplate(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj,
             Neurotec::Biometrics::NBiometricOperations nextOperation=Neurotec::Biometrics::nboNone);
-    //TODO: check if this is needed
     void setSubjectID(std::string);
     std::vector<VerilookFace> getCurrentFaces();
 private:
@@ -91,8 +99,8 @@ private:
 
     bool m_isSegmentationActivated;
     std::string m_subjectID;
-    const bool m_enableDatabase;
-    const std::string m_databasePath;
+    bool m_enableDatabase;
+    std::string m_databasePath;
 };
 
 void obtainVerilookLicenses();
