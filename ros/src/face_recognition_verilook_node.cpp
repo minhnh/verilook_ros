@@ -2,12 +2,17 @@
  * Author: Minh Nguyen
  */
 
+/* System */
+#include <opencv/cv.h>
+
 /* ROS */
+#include <cv_bridge/cv_bridge.h>
+
+/* Robocup */
+#include <mcr_perception_msgs/FaceList.h>
 
 /* Package */
 #include "face_recognition_verilook_node.h"
-#include <opencv/cv.h>
-#include <cv_bridge/cv_bridge.h>
 
 namespace verilook_ros
 {
@@ -46,11 +51,14 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle &nh)
 //    ros::ServiceServer service = m_nodeHandle.advertiseService(
 //            "create_face_template", &FaceDetectionVerilookNode::createTemplateServiceCallback, this);
 
-    m_imagePub = m_imageTransport.advertise("processed_image", 1);
+    m_pub_imageProcessed = m_imageTransport.advertise("processed_image", 1);
+    m_pub_faceImage = m_imageTransport.advertise("face_image", 1);
+
+    m_pub_faceList = m_nodeHandle.advertise<mcr_perception_msgs::FaceList>("face_list", 1);
     m_sub_eventIn = m_nodeHandle.subscribe("event_in", 1, &FaceRecognitionVerilookNode::eventInCallback, this);
     m_sub_subjectID = m_nodeHandle.subscribe("subject_id", 1, &FaceRecognitionVerilookNode::subjectIDCallback, this);
 
-    pub_event_out_ = m_nodeHandle.advertise<std_msgs::String>("event_out", 1);
+    m_pub_eventOut = m_nodeHandle.advertise<std_msgs::String>("event_out", 1);
 
 }
 
@@ -96,7 +104,7 @@ void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image:
     cond.notify_one();
 
     // Shutdown the image stream to save CPU usage
-    m_imageSub.shutdown();
+    m_sub_imageRaw.shutdown();
 }
 
 void FaceRecognitionVerilookNode::getImage(HNImage *phImage)
@@ -127,19 +135,19 @@ void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &m
 
     if (msg->data == "e_enroll")
     {
-        m_imageSub = it.subscribe(
+        m_sub_imageRaw = it.subscribe(
                 "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
         m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
     }
     else if (msg->data == "e_identify")
     {
-        m_imageSub = it.subscribe(
+        m_sub_imageRaw = it.subscribe(
                 "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
         m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
     }
     else if (msg->data == "e_createTemplate")
     {
-        m_imageSub = it.subscribe(
+        m_sub_imageRaw = it.subscribe(
                 "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
         m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
     }
@@ -169,12 +177,31 @@ void FaceRecognitionVerilookNode::showProcessedImage()
         return;
     }
 
+    mcr_perception_msgs::FaceList faceList;
+
     for(std::vector<VerilookFace>::iterator p_face = faces.begin(); p_face != faces.end(); ++p_face) {
         Neurotec::Geometry::NRect boundingRect = p_face->m_attributes.GetBoundingRect();
 //        ROS_INFO("%s: found face at (%d, %d), width = %d, height = %d",
 //                PACKAGE_NAME, boundingRect.X, boundingRect.Y,
 //                boundingRect.Width, boundingRect.Height);
 
+        // Extract face image only
+        int offsetWidth = (int) boundingRect.Width * 0.1;
+        int offsetHeight = (int) boundingRect.Height * 0.15;
+        cv::Mat cropped_image(cv_image->image, cv::Rect(
+        		boundingRect.X - offsetWidth, boundingRect.Y - offsetHeight * 2,
+        		boundingRect.Width + offsetWidth * 2, boundingRect.Height + offsetHeight * 3));
+        cv_bridge::CvImage faceOnly;
+        faceOnly.encoding = sensor_msgs::image_encodings::BGR8;
+        faceOnly.image = cropped_image;
+
+        mcr_perception_msgs::Face faceMsg;
+        faceMsg.name = p_face->m_id;
+        faceMsg.image = *faceOnly.toImageMsg();
+
+        faceList.faces.push_back(faceMsg);
+
+        // Drawing
         std::stringstream info;
         info << p_face->m_id;
 //        info << ", gender: " << std::string(Neurotec::NEnum::ToString(
@@ -201,7 +228,9 @@ void FaceRecognitionVerilookNode::showProcessedImage()
         cv::rectangle(cv_image->image, pointTopLeft, pointBottomRight, colour, 2, 8, 0);
     }
 
-    m_imagePub.publish(cv_image->toImageMsg());
+    m_pub_imageProcessed.publish(cv_image->toImageMsg());
+    m_pub_faceImage.publish(faceList.faces[0].image);
+    m_pub_faceList.publish(faceList);
 }
 
 void FaceRecognitionVerilookNode::subjectIDCallback(const std_msgs::String::Ptr &msg)

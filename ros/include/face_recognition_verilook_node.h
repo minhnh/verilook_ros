@@ -51,12 +51,19 @@ private:
     VerilookWrapper * m_verilookWrapper;
 
     ros::NodeHandle m_nodeHandle;
-    ros::Publisher pub_event_out_;
+
     ros::Subscriber m_sub_eventIn;
     ros::Subscriber m_sub_subjectID;
+
+    ros::Publisher m_pub_faceList;
+    ros::Publisher m_pub_eventOut;
+
     image_transport::ImageTransport m_imageTransport;
-    image_transport::Subscriber m_imageSub;
-    image_transport::Publisher m_imagePub;
+
+    image_transport::Subscriber m_sub_imageRaw;
+    image_transport::Publisher m_pub_imageProcessed;
+    image_transport::Publisher m_pub_faceImage;
+
     sensor_msgs::ImageConstPtr mp_image;
 
     boost::mutex mtx;
