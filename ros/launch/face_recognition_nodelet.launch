@@ -3,16 +3,18 @@
 
   <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
     <param name="video_device" value="/dev/video0" />
+    <!-- 1920 x 1080, 1280 x 720 -->
     <param name="image_width" value="1280" />
     <param name="image_height" value="720" />
     <param name="pixel_format" value="yuyv" />
     <param name="camera_frame_id" value="usb_cam" />
     <param name="io_method" value="mmap"/>
+    <param name="auto_focus" value="false"/>
   </node>
 
   <node pkg="nodelet" type="nodelet" name="standalone_nodelet"  args="manager" output="screen"/>
   <node pkg="nodelet" type="nodelet" name="face_recognition_verilook_nodelet" args="load verilook_ros/FaceRecognitionVerilookNodelet standalone_nodelet" output="screen">
-    <param name="enable_database" value="false" type="bool"/>
+    <param name="enable_database" value="true" type="bool"/>
     <param name="database_path" value="faces.db" type="str"/>
     <remap from="/face_recognition_verilook_nodelet/event_out" to="remapped_output"/>
   </node>
