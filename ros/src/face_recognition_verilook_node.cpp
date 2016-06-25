@@ -35,7 +35,7 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle &nh)
     m_nodeHandle.param<bool>("enable_database", enableDatabase, false);
     if (enableDatabase)
     {
-        m_nodeHandle.param<std::string>("database_path", databasePath, "data/verilook_ros/faces.db");
+        m_nodeHandle.param<std::string>("database_path", databasePath, "faces.db");
         ROS_INFO_STREAM(PACKAGE_NAME << ": saving templates to database at " << databasePath);
     }
 
@@ -209,8 +209,11 @@ void FaceRecognitionVerilookNode::showProcessedImage()
 
     mcr_perception_msgs::FaceList faceList;
 
-    for(std::vector<VerilookFace>::iterator p_face = faces.begin(); p_face != faces.end(); ++p_face) {
+    for (std::vector<VerilookFace>::iterator p_face = faces.begin();
+            p_face != faces.end(); ++p_face)
+    {
         Neurotec::Geometry::NRect boundingRect = p_face->m_attributes.GetBoundingRect();
+
         ROS_DEBUG("%s: found face at (%d, %d), width = %d, height = %d",
                 PACKAGE_NAME, boundingRect.X, boundingRect.Y,
                 boundingRect.Width, boundingRect.Height);
@@ -218,6 +221,25 @@ void FaceRecognitionVerilookNode::showProcessedImage()
         // Extract face image only
         int offsetWidth = (int) boundingRect.Width * 0.1;
         int offsetHeight = (int) boundingRect.Height * 0.15;
+
+        // check if roi is contained within image
+        if (boundingRect.X - offsetWidth < 0)
+        {
+            offsetWidth = boundingRect.X;
+        }
+        if (boundingRect.Y - offsetHeight * 2 < 0)
+        {
+            offsetHeight = (int) boundingRect.Y / 2;
+        }
+        if (boundingRect.X + boundingRect.Width + offsetWidth >= cv_image->image.cols)
+        {
+            offsetWidth = cv_image->image.cols - boundingRect.X - boundingRect.Width;
+        }
+        if (boundingRect.Y + boundingRect.Height + offsetHeight >= cv_image->image.rows)
+        {
+            offsetHeight = cv_image->image.rows - boundingRect.Y - boundingRect.Height;
+        }
+
         cv::Mat cropped_image(cv_image->image, cv::Rect(
                 boundingRect.X - offsetWidth, boundingRect.Y - offsetHeight * 2,
                 boundingRect.Width + offsetWidth * 2, boundingRect.Height + offsetHeight * 3));
