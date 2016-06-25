@@ -106,7 +106,11 @@ void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
 void VerilookWrapper::identify(GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj)
 {
     if (m_asyncOperations.empty())
+    {
+        if (m_subjectID.empty())
+            m_subjectID = "unknown";
         createTemplate(getImage, obj, nboIdentify);
+    }
     else
     {
         ROS_WARN_STREAM(PACKAGE_NAME << ": number of operations still not completed: " << m_asyncOperations.size());
@@ -121,6 +125,7 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
     NBiometricStatus status;
     std::string statusString, id;
     m_currentOperations = nboNone;
+
     for (int i = 0; i < identifyTask.GetSubjects().GetCount(); i++)
     {
         subject = identifyTask.GetSubjects().Get(i);
@@ -134,19 +139,14 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
         {
             NSubject::MatchingResultCollection results = subject.GetMatchingResults();
             int count = results.GetCount();
-            ROS_INFO_STREAM(PACKAGE_NAME << ": " << count << " matching subjects found");
+            ROS_DEBUG_STREAM(PACKAGE_NAME << ": " << count << " matching subjects found");
             for (int j = 0; j < count; j++)
             {
                 NImage thumbnail(NULL);
                 Neurotec::Biometrics::NMatchingResult result = results.Get(j);
                 int score = result.GetScore();
-                std::string matchedId = result.GetId();
-                ROS_INFO("%s: matched '%s' (score = %d)", PACKAGE_NAME, matchedId.c_str(), score);
-
-                NFace face = subject.GetFaces().Get(0);
-                NLAttributes attributes = face.GetObjects().Get(0);
-                VerilookFace verilookFace(matchedId, attributes);
-                m_currentFaces.push_back(verilookFace);
+                id = result.GetId();
+                ROS_INFO("%s: matched '%s' (score = %d)", PACKAGE_NAME, id.c_str(), score);
 
 //                NSubject target;
 //                target.SetId(matchedId);
@@ -175,6 +175,13 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
 //                }
             }
         }
+
+        //TODO: handle matching multiple people
+        NFace face = subject.GetFaces().Get(0);
+        NLAttributes attributes = face.GetObjects().Get(0);
+        VerilookFace verilookFace(id, attributes);
+        m_currentFaces.push_back(verilookFace);
+
     }
 }
 
@@ -196,6 +203,7 @@ void VerilookWrapper::createTemplate(
     }
 
     subject.SetId(m_subjectID);
+
     subject.SetMultipleSubjects(true);
 
     NBiometricTask task = m_biometricClient.CreateTask(nboCreateTemplate, subject);
@@ -234,7 +242,8 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
 
     ROS_INFO("%s: detected %d face(s) in '%s':", PACKAGE_NAME, facesCount, id.c_str());
 
-    m_currentFaces.clear();
+    if (m_currentFaces.size() > 0)
+        m_currentFaces.clear();
 
     for (int i = 0; i < facesCount; i++)
     {
@@ -250,21 +259,20 @@ void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTas
                 (successful ? "successful" : "failed"), statusString.c_str());
         if (successful)
         {
-            std::string relatedFaceId(id);
-
+            std::stringstream relatedFaceId;
+            relatedFaceId << id;
             if (i > 0)
             {
-                char buff[100];
-                snprintf(buff, sizeof(buff), "%s #%d", id.c_str(), i + 1);
-                relatedFaceId = buff;
-                subject.SetId(relatedFaceId);
+                relatedFaceId << " #" << i + 1;
+                subject.SetId(relatedFaceId.str());
             }
 
             NFace face = subject.GetFaces().Get(0);
             NLAttributes attributes = face.GetObjects().Get(0);
+
             if (m_currentOperations != nboIdentify)
             {
-                VerilookFace verilookFace(relatedFaceId, attributes);
+                VerilookFace verilookFace(relatedFaceId.str(), attributes);
                 m_currentFaces.push_back(verilookFace);
             }
 
