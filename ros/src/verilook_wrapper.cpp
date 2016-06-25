@@ -72,7 +72,7 @@ void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVeril
     }
 
     if (m_asyncOperations.empty())
-        createTemplate(getImage, obj, nboEnroll);
+        createTemplate(getImage, obj, nboEnrollWithDuplicateCheck);
     else
     {
         m_biometricClient.ForceStart();
@@ -81,6 +81,8 @@ void VerilookWrapper::enroll(GetImageFunctionType getImage, FaceRecognitionVeril
 
 void VerilookWrapper::onEnrollCompleted(NBiometricTask enrollTask)
 {
+    ROS_DEBUG_STREAM(PACKAGE_NAME << ": in onEnrollCompleted function");
+
     bool successful = false;
     NBiometricTask::SubjectCollection subjects = enrollTask.GetSubjects();
     m_currentOperations = nboNone;
@@ -113,6 +115,8 @@ void VerilookWrapper::identify(GetImageFunctionType getImage, FaceRecognitionVer
 
 void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
 {
+    ROS_DEBUG_STREAM(PACKAGE_NAME << ": in onIdentifyCompleted function");
+
     NSubject subject;
     NBiometricStatus status;
     std::string statusString, id;
@@ -142,6 +146,7 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
                 NFace face = subject.GetFaces().Get(0);
                 NLAttributes attributes = face.GetObjects().Get(0);
                 VerilookFace verilookFace(matchedId, attributes);
+                m_currentFaces.push_back(verilookFace);
 
 //                NSubject target;
 //                target.SetId(matchedId);
@@ -168,27 +173,28 @@ void VerilookWrapper::onIdentifyCompleted(NBiometricTask identifyTask)
 //                {
 //                	ROS_INFO_STREAM(PACKAGE_NAME << ": >don't have thumbnail");
 //                }
-
-                m_currentFaces.push_back(verilookFace);
             }
         }
     }
 }
 
 void VerilookWrapper::createTemplate(
-        GetImageFunctionType getImage, FaceRecognitionVerilookNode * obj,
+        GetImageFunctionType getImageFunction, FaceRecognitionVerilookNode * obj,
         NBiometricOperations nextOperation /*=nboNone*/)
 {
     NSubject subject;
-    //TODO: check type of HNImage himage, may need to be NImage
     setBiometricClientParams();
-    NFace face;
-    Neurotec::Biometrics::HNImage himage;
+    std::vector<Neurotec::Images::NImage> images;
 
-    (obj->getImage)(&himage);
-    face.SetImage(NImage(himage, true));
+    (obj->*getImageFunction)(images);
+    ROS_DEBUG_STREAM(PACKAGE_NAME << ": number of images received: " << images.size());
+    for (std::vector<NImage>::iterator it = images.begin(); it != images.end(); it++)
+    {
+        NFace face;
+        face.SetImage(*it);
+        subject.GetFaces().Add(face);
+    }
 
-    subject.GetFaces().Add(face);
     subject.SetId(m_subjectID);
     subject.SetMultipleSubjects(true);
 
@@ -200,7 +206,7 @@ void VerilookWrapper::createTemplate(
 
 void VerilookWrapper::onCreateTemplateCompleted(NBiometricTask createTempalteTask)
 {
-//    ROS_INFO_STREAM(PACKAGE_NAME << ": onCreateTemplateCompleted");
+    ROS_DEBUG_STREAM(PACKAGE_NAME << ": in onCreateTemplateCompleted function");
 
     int facesCount;
     NBiometricStatus status;

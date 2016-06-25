@@ -16,6 +16,7 @@
   <node pkg="nodelet" type="nodelet" name="face_recognition_verilook_nodelet" args="load verilook_ros/FaceRecognitionVerilookNodelet standalone_nodelet" output="screen">
     <param name="enable_database" value="true" type="bool"/>
     <param name="database_path" value="faces.db" type="str"/>
+    <param name="image_batch_size" value="3" type="int"/>
     <remap from="/face_recognition_verilook_nodelet/event_out" to="remapped_output"/>
   </node>
   

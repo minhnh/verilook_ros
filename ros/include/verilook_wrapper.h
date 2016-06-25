@@ -56,7 +56,8 @@ using Neurotec::HNObject;
 using Neurotec::NTrue;
 using Neurotec::NFalse;
 
-typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(Neurotec::Images::HNImage*);
+//typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(Neurotec::Images::HNImage*);
+typedef void ( FaceRecognitionVerilookNode::* GetImageFunctionType )(std::vector<Neurotec::Images::NImage> &);
 
 struct VerilookFace
 {

@@ -18,14 +18,20 @@ namespace verilook_ros
 {
 
 using Neurotec::Images::HNImage;
+using Neurotec::Images::NImage;
 using Neurotec::Geometry::NRect;
 using Neurotec::Biometrics::NBiometricTypes;
 
 FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle &nh)
-: m_nodeHandle(nh), m_verilookWrapper(NULL), m_imageTransport(nh)
+: m_nodeHandle(nh), m_verilookWrapper(NULL), m_imageTransport(nh), m_imageBatchSize(1)
 {
     bool enableDatabase;
     std::string databasePath;
+    int imageBatchSize;
+
+    m_nodeHandle.param<int>("image_batch_size", imageBatchSize, 1);
+    m_imageBatchSize = imageBatchSize;
+
     m_nodeHandle.param<bool>("enable_database", enableDatabase, false);
     if (enableDatabase)
     {
@@ -40,7 +46,6 @@ FaceRecognitionVerilookNode::FaceRecognitionVerilookNode(ros::NodeHandle &nh)
         obtainVerilookLicenses();
 
         m_verilookWrapper = new VerilookWrapper(m_biometricClient, enableDatabase, databasePath);
-
     }
     catch (Neurotec::NError & e)
     {
@@ -82,39 +87,28 @@ void FaceRecognitionVerilookNode::imageMessageCallback(const sensor_msgs::Image:
 
     boost::lock_guard<boost::mutex> lock(mtx);
 
-//    ROS_INFO_STREAM(PACKAGE_NAME << ": image message callback");
-    // Create the Image object
-    HNImage newImage = NULL;
-    NResult result = NImageCreateFromDataEx(NPF_RGB_8U.GetValue(), p_image->width, p_image->height,
-                                            p_image->step, p_image->step, &p_image->data[0],
-                                            p_image->height*p_image->step, 0, &newImage);
-    if (NFailed(result))
-    {
-        result = printErrorMsgWithLastError("NImageCreateWrapperEx() failed, result = %d\n", result);
-    }
-    else
-    {
-        // If buffer is not equal to NULL, free its memory
-        NObjectSet(NULL, (HNObject*) &image_buffer);
-        // Place the new image for grabs by the getImage function
-        image_buffer = newImage;
-        mp_image = p_image;
-    }
+    NImage newImg = NImage::FromData(NPF_RGB_8U, p_image->width, p_image->height, p_image->step,
+            p_image->step,&p_image->data[0], p_image->height*p_image->step);
+    m_images.push_back(newImg);
+    mp_image = p_image;
 
     cond.notify_one();
-
-    // Shutdown the image stream to save CPU usage
-    m_sub_imageRaw.shutdown();
 }
 
-void FaceRecognitionVerilookNode::getImage(HNImage *phImage)
+void FaceRecognitionVerilookNode::getImage(std::vector<NImage> & phImage)
 {
     boost::unique_lock<boost::mutex> lock(mtx);
     boost::system_time const timeout = boost::get_system_time() + boost::posix_time::seconds(1);
     if (cond.timed_wait(lock, timeout, boost::bind(&FaceRecognitionVerilookNode::condFulfilled, this)))
     {
-        *phImage = image_buffer;
-        image_buffer = NULL;
+        if (m_images.empty())
+        {
+            ROS_WARN_STREAM(PACKAGE_NAME << ": No image in image vector");
+        }
+        else
+        {
+            phImage.push_back(m_images.back());
+        }
     }
     else
     {
@@ -122,34 +116,70 @@ void FaceRecognitionVerilookNode::getImage(HNImage *phImage)
     }
 }
 
+void FaceRecognitionVerilookNode::getMultipleImages(std::vector<NImage> & phImage)
+{
+    boost::unique_lock<boost::mutex> lock(mtx);
+    boost::system_time const timeout = boost::get_system_time() + boost::posix_time::seconds(1);
+    if (cond.timed_wait(lock, timeout, boost::bind(&FaceRecognitionVerilookNode::condFulfilled, this)))
+    {
+        if (m_images.empty())
+        {
+            ROS_WARN_STREAM(PACKAGE_NAME << ": No image in image vector");
+        }
+        else
+        {
+            for (std::vector<NImage>::iterator it = m_images.begin(); it != m_images.end(); it++)
+            {
+                phImage.push_back(*it);
+            }
+        }
+    }
+    else
+    {
+        ROS_ERROR_STREAM(PACKAGE_NAME << ": Timed out while waiting on ROS image stream.");
+    }
+}
+
 bool FaceRecognitionVerilookNode::condFulfilled()
 {
-    return image_buffer != NULL;
+//    return image_buffer != NULL;
+    return m_images.size() >= m_imageBatchSize;
 }
 
 void FaceRecognitionVerilookNode::eventInCallback(const std_msgs::String::Ptr &msg)
 {
-//    ROS_INFO_STREAM(PACKAGE_NAME << ": in event_in callback...");
-    // Subscribe to the image stream
     image_transport::ImageTransport it(m_nodeHandle);
+
+    if (m_images.size() > 0)
+        m_images.clear();
 
     if (msg->data == "e_enroll")
     {
         m_sub_imageRaw = it.subscribe(
                 "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
-        m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
+
+        m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getMultipleImages, this);
+
+        // Shutdown the image stream to save CPU usage
+        m_sub_imageRaw.shutdown();
     }
     else if (msg->data == "e_identify")
     {
         m_sub_imageRaw = it.subscribe(
                 "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
         m_verilookWrapper->identify(&FaceRecognitionVerilookNode::getImage, this);
+
+        // Shutdown the image stream to save CPU usage
+        m_sub_imageRaw.shutdown();
     }
     else if (msg->data == "e_createTemplate")
     {
         m_sub_imageRaw = it.subscribe(
                 "/usb_cam/image_raw", 10, &FaceRecognitionVerilookNode::imageMessageCallback, this);
-        m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getImage, this);
+        m_verilookWrapper->createTemplate(&FaceRecognitionVerilookNode::getMultipleImages, this);
+
+        // Shutdown the image stream to save CPU usage
+        m_sub_imageRaw.shutdown();
     }
     else if (msg->data == "e_showTemplate")
     {
@@ -181,16 +211,16 @@ void FaceRecognitionVerilookNode::showProcessedImage()
 
     for(std::vector<VerilookFace>::iterator p_face = faces.begin(); p_face != faces.end(); ++p_face) {
         Neurotec::Geometry::NRect boundingRect = p_face->m_attributes.GetBoundingRect();
-//        ROS_INFO("%s: found face at (%d, %d), width = %d, height = %d",
-//                PACKAGE_NAME, boundingRect.X, boundingRect.Y,
-//                boundingRect.Width, boundingRect.Height);
+        ROS_DEBUG("%s: found face at (%d, %d), width = %d, height = %d",
+                PACKAGE_NAME, boundingRect.X, boundingRect.Y,
+                boundingRect.Width, boundingRect.Height);
 
         // Extract face image only
         int offsetWidth = (int) boundingRect.Width * 0.1;
         int offsetHeight = (int) boundingRect.Height * 0.15;
         cv::Mat cropped_image(cv_image->image, cv::Rect(
-        		boundingRect.X - offsetWidth, boundingRect.Y - offsetHeight * 2,
-        		boundingRect.Width + offsetWidth * 2, boundingRect.Height + offsetHeight * 3));
+                boundingRect.X - offsetWidth, boundingRect.Y - offsetHeight * 2,
+                boundingRect.Width + offsetWidth * 2, boundingRect.Height + offsetHeight * 3));
         cv_bridge::CvImage faceOnly;
         faceOnly.encoding = sensor_msgs::image_encodings::BGR8;
         faceOnly.image = cropped_image;
@@ -253,7 +283,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
     ROS_INFO_STREAM(PACKAGE_NAME << "create template request: " << request.output_filename.c_str());
 
     // Free a possible leftover frame from last service call.
-    NObjectSet(NULL, (HNObject*) &image_buffer);
+//    NObjectSet(NULL, (HNObject*) &image_buffer);
 
     // Subscribe to the image stream
     image_transport::ImageTransport it(m_nodeHandle);
@@ -263,7 +293,7 @@ bool FaceRecognitionVerilookNode::createTemplateServiceCallback(
     // Invoke the main big "create template" or "enroll face" routine.
     NRect boundingRect;
     NResult result = Neurotec::N_OK;
-    m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
+//    m_verilookWrapper->enroll(&FaceRecognitionVerilookNode::getImage, this);
 
     // Fill the service response
     if (NFailed(result))

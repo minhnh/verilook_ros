@@ -34,7 +34,8 @@ class FaceRecognitionVerilookNode
 public:
     FaceRecognitionVerilookNode(ros::NodeHandle &nh);
     ~FaceRecognitionVerilookNode();
-    void getImage(Neurotec::Images::HNImage *phImage);
+    void getImage(std::vector<Neurotec::Images::NImage> & images);
+    void getMultipleImages(std::vector<Neurotec::Images::NImage> & images);
 
 private:
     void imageMessageCallback(const sensor_msgs::Image::ConstPtr& msg);
@@ -46,7 +47,6 @@ private:
     void subjectIDCallback(const std_msgs::String::Ptr &msg);
     bool createTemplateServiceCallback(CreateTemplate::Request& request, CreateTemplate::Response& response);
 
-    Neurotec::Images::HNImage image_buffer = NULL;
     Neurotec::Biometrics::Client::NBiometricClient m_biometricClient;
     VerilookWrapper * m_verilookWrapper;
 
@@ -54,17 +54,18 @@ private:
 
     ros::Subscriber m_sub_eventIn;
     ros::Subscriber m_sub_subjectID;
-
     ros::Publisher m_pub_faceList;
     ros::Publisher m_pub_eventOut;
 
     image_transport::ImageTransport m_imageTransport;
-
     image_transport::Subscriber m_sub_imageRaw;
     image_transport::Publisher m_pub_imageProcessed;
     image_transport::Publisher m_pub_faceImage;
 
     sensor_msgs::ImageConstPtr mp_image;
+    std::vector<Neurotec::Images::NImage> m_images;
+
+    int m_imageBatchSize;
 
     boost::mutex mtx;
     boost::condition_variable cond;
